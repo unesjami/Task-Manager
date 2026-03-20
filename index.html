@@ -1,11 +1,17 @@
 <!doctype html>
 <html lang="en">
- <head>
-  <link rel="shortcut icon" href="https://i.ibb.co/wZCzhSfW/2task-manager-favicon.png" type="image/png">
+<head>
+ <link rel="shortcut icon" href="https://i.ibb.co/wZCzhSfW/2task-manager-favicon.png" type="image/png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Task Manager · 3‑Way Planner</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
@@ -49,7 +55,6 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     }
 
-    /* checkbox style – tick when done */
     .task-checkbox {
       appearance: none;
       width: 22px;
@@ -85,7 +90,6 @@
       color: #121212;
     }
 
-    /* column header underline */
     .column-header::before {
       content: '';
       position: absolute;
@@ -100,7 +104,6 @@
       background-color: #7f99b3;
     }
 
-    /* delete icon appears only when task is done */
     .delete-icon {
       opacity: 0;
       pointer-events: none;
@@ -129,7 +132,6 @@
       background: rgba(255,255,255,0.1);
     }
 
-    /* pen icon – minimal, replaces three dots */
     .pen-icon {
       width: 28px;
       height: 28px;
@@ -155,7 +157,6 @@
       background: rgba(255,255,255,0.1);
     }
 
-    /* stat badge */
     .stat-badge {
       font-size: 0.7rem;
       padding: 0.2rem 0.8rem;
@@ -170,7 +171,6 @@
       color: #d1dce6;
     }
 
-    /* animation only for the target task when toggled */
     @keyframes taskPop {
       0% { transform: scale(1); background-color: transparent; }
       30% { transform: scale(1.02); background-color: rgba(255, 215, 0, 0.15); }
@@ -180,7 +180,6 @@
       animation: taskPop 0.3s ease-out;
     }
 
-    /* minimal edit menu (only edit) */
     .edit-menu {
       min-width: 70px;
       background: white;
@@ -190,14 +189,66 @@
       background: #2a3138;
       border-color: #4a555f;
     }
+    
+    .login-btn {
+      background-color: #2c3e50;
+      padding: 12px 24px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .login-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    body.dark-mode .login-btn {
+      background-color: #6b8c9e;
+    }
+    .user-info-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+    }
+    .logout-btn {
+      cursor: pointer;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      background: #dc2626;
+      color: white;
+      border: none;
+    }
+    .logout-btn:hover {
+      background: #b91c1c;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
- </head>
- <body class="h-full flex flex-col">
+</head>
+<body class="h-full flex flex-col">
   <div id="app" class="h-full flex flex-col overflow-hidden"></div>
   <script>
     (function() {
-      // ----- CONFIG (renamed columns) -----
+      // 🔥 FIREBASE CONFIG
+      const firebaseConfig = {
+        apiKey: "AIzaSyAumnsP0kSHifAmTS_eovt_olOg1opw-jY",
+        authDomain: "my-task-manager-edb96.firebaseapp.com",
+        projectId: "my-task-manager-edb96",
+        storageBucket: "my-task-manager-edb96.firebasestorage.app",
+        messagingSenderId: "793073603673",
+        appId: "1:793073603673:web:955e044384ff735e25cd48"
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+
       const COLUMNS = {
         TODAY: 'today',
         SOON: 'soon',
@@ -210,54 +261,80 @@
         future: { title: 'I will do in future', color: '#6f7c8a', desc: '' }
       };
 
-      // ----- TASK MANAGER (clean start) -----
-      class TaskManager {
+      class CloudTaskManager {
         constructor() {
-          this.tasks = this.loadTasks();
+          this.tasks = [];
           this.listeners = [];
+          this.currentUser = null;
+          this.unsubscribe = null;
         }
 
-        loadTasks() {
-          const stored = localStorage.getItem('taskmanager_pen_v1');
-          return stored ? JSON.parse(stored) : [];
+        setUser(user) {
+          this.currentUser = user;
+          if (user) {
+            this.startSync();
+          } else {
+            if (this.unsubscribe) {
+              this.unsubscribe();
+              this.unsubscribe = null;
+            }
+            this.tasks = [];
+            this.notify();
+          }
         }
 
-        saveTasks() {
-          localStorage.setItem('taskmanager_pen_v1', JSON.stringify(this.tasks));
-          this.notify();
+        startSync() {
+          if (!this.currentUser) return;
+          
+          const userTasksRef = db.collection('users').doc(this.currentUser.uid).collection('tasks');
+          this.unsubscribe = userTasksRef.onSnapshot((snapshot) => {
+            this.tasks = [];
+            snapshot.forEach((doc) => {
+              this.tasks.push({
+                id: doc.id,
+                ...doc.data()
+              });
+            });
+            this.notify();
+          });
         }
 
-        addTask(title, column, description = '') {
+        async addTask(title, column, description = '') {
+          if (!this.currentUser) return;
+          
           const task = {
-            id: Date.now().toString() + '-' + Math.random().toString(36).substring(2, 8),
             title,
             description,
             column,
             completed: false,
-            createdAt: new Date().toISOString()
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
           };
-          this.tasks.push(task);
-          this.saveTasks();
+          
+          await db.collection('users').doc(this.currentUser.uid)
+                  .collection('tasks').add(task);
         }
 
-        updateTask(id, updates) {
-          const task = this.tasks.find(t => t.id === id);
-          if (task) {
-            Object.assign(task, updates);
-            this.saveTasks();
-          }
+        async updateTask(id, updates) {
+          if (!this.currentUser) return;
+          
+          await db.collection('users').doc(this.currentUser.uid)
+                  .collection('tasks').doc(id).update(updates);
         }
 
-        deleteTask(id) {
-          this.tasks = this.tasks.filter(t => t.id !== id);
-          this.saveTasks();
+        async deleteTask(id) {
+          if (!this.currentUser) return;
+          
+          await db.collection('users').doc(this.currentUser.uid)
+                  .collection('tasks').doc(id).delete();
         }
 
         getTasksByColumn(column) {
-          return this.tasks.filter(t => t.column === column).sort((a, b) => {
-            if (a.completed === b.completed) return new Date(b.createdAt) - new Date(a.createdAt);
-            return a.completed ? 1 : -1;
-          });
+          return this.tasks
+            .filter(t => t.column === column)
+            .sort((a, b) => {
+              if (a.completed === b.completed) return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+              return a.completed ? 1 : -1;
+            });
         }
 
         subscribe(listener) {
@@ -269,19 +346,26 @@
         }
       }
 
-      // ----- UI MANAGER (pen icon, no three dots) -----
       class UIManager {
         constructor(taskManager) {
           this.taskManager = taskManager;
           this.isDark = localStorage.getItem('taskmanager_dark') === 'true';
           this.highlightedTaskId = null;
+          this.user = null;
           this.init();
         }
 
         init() {
           if (this.isDark) document.body.classList.add('dark-mode');
-          this.render();
+          
+          auth.onAuthStateChanged((user) => {
+            this.user = user;
+            this.taskManager.setUser(user);
+            this.render();
+          });
+          
           this.taskManager.subscribe(() => this.render());
+          this.render();
         }
 
         toggleDarkMode() {
@@ -295,9 +379,35 @@
           this.highlightedTaskId = id;
         }
 
+        login() {
+          const provider = new firebase.auth.GoogleAuthProvider();
+          auth.signInWithPopup(provider);
+        }
+
+        logout() {
+          auth.signOut();
+        }
+
         render() {
           const app = document.getElementById('app');
-          app.innerHTML = this.getAppHTML();
+          
+          if (!this.user) {
+            app.innerHTML = this.getLoginHTML();
+          } else {
+            app.innerHTML = this.getAppHTML();
+          }
+        }
+
+        getLoginHTML() {
+          return `
+            <div class="h-full flex items-center justify-center p-4">
+              <div class="card shadow-soft rounded-xl p-8 max-w-md w-full text-center">
+                <h1 class="text-2xl font-bold mb-4">Task Manager</h1>
+                <p class="text-sm opacity-70 mb-6">Sign in to access your tasks across all devices</p>
+                <button onclick="ui.login()" class="login-btn">Sign in with Google</button>
+              </div>
+            </div>
+          `;
         }
 
         getAppHTML() {
@@ -313,9 +423,16 @@
                     <span class="stat-badge">✓ ${doneTasks}</span>
                   </div>
                 </div>
-                <button onclick="ui.toggleDarkMode()" class="p-1.5 rounded-lg border text-sm w-9 h-9 ${this.isDark ? 'bg-gray-700 text-amber-300 border-gray-600' : 'bg-gray-200 text-gray-800 border-gray-300'}">
-                  ${this.isDark ? '☀️' : '🌙'}
-                </button>
+                <div class="flex items-center gap-3">
+                  <div class="user-info-header">
+                    <img src="${this.user.photoURL || 'https://via.placeholder.com/32'}" class="user-avatar" alt="">
+                    <span class="text-sm hidden md:inline">${this.user.displayName || ''}</span>
+                  </div>
+                  <button onclick="ui.logout()" class="logout-btn">Logout</button>
+                  <button onclick="ui.toggleDarkMode()" class="p-1.5 rounded-lg border text-sm w-9 h-9 ${this.isDark ? 'bg-gray-700 text-amber-300 border-gray-600' : 'bg-gray-200 text-gray-800 border-gray-300'}">
+                    ${this.isDark ? '☀️' : '🌙'}
+                  </button>
+                </div>
               </div>
             </header>
 
@@ -357,40 +474,33 @@
           return `
             <div id="task-${task.id}" class="task-item p-2 rounded-lg ${highlightClass}" style="background-color: ${bgColor}; border: 1px solid ${borderColor};">
               <div class="flex items-center gap-2">
-                <!-- tick checkbox -->
                 <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} onchange="ui.toggleTaskDone('${task.id}', this.checked)">
 
-                <!-- delete icon appears only when task is done -->
                 <span class="delete-icon ${deleteVisible}" onclick="ui.deleteTask('${task.id}')" title="delete">✕</span>
 
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium break-words ${task.completed ? 'line-through opacity-40' : ''}">${task.title}</p>
-                  ${task.description ? `<p class="text-xs opacity-50 break-words leading-tight">${task.description}</p>` : ''}
+                  <p class="text-sm font-medium break-words ${task.completed ? 'line-through opacity-40' : ''}">${this.escapeHtml(task.title)}</p>
+                  ${task.description ? `<p class="text-xs opacity-50 break-words leading-tight">${this.escapeHtml(task.description)}</p>` : ''}
                 </div>
 
-                <!-- PEN ICON (replaces three dots) - opens edit modal directly -->
                 <button onclick="ui.showEditForm('${task.id}')" class="pen-icon" title="edit task">✎</button>
               </div>
             </div>
           `;
         }
 
-        toggleTaskDone(id, isChecked) {
-          const task = this.taskManager.tasks.find(t => t.id === id);
-          if (task) {
-            this.setHighlight(id);
-            this.taskManager.updateTask(id, { completed: isChecked });
-            setTimeout(() => {
-              this.highlightedTaskId = null;
-            }, 400);
-          }
+        async toggleTaskDone(id, isChecked) {
+          this.setHighlight(id);
+          await this.taskManager.updateTask(id, { completed: isChecked });
+          setTimeout(() => {
+            this.highlightedTaskId = null;
+          }, 400);
         }
 
-        deleteTask(id) {
-          this.taskManager.deleteTask(id);
+        async deleteTask(id) {
+          await this.taskManager.deleteTask(id);
         }
 
-        // Add task with Enter key
         showAddForm(column) {
           const info = COLUMN_INFO[column];
           const modal = document.createElement('div');
@@ -430,10 +540,10 @@
           });
         }
 
-        addTask(column) {
+        async addTask(column) {
           const title = document.getElementById('modal-title')?.value.trim();
           const desc = document.getElementById('modal-desc')?.value.trim() || '';
-          if (title) this.taskManager.addTask(title, column, desc);
+          if (title) await this.taskManager.addTask(title, column, desc);
         }
 
         showEditForm(id) {
@@ -464,10 +574,10 @@
           });
         }
 
-        updateTask(id) {
+        async updateTask(id) {
           const title = document.getElementById('modal-edit-title')?.value.trim();
           const desc = document.getElementById('modal-edit-desc')?.value.trim() || '';
-          if (title) this.taskManager.updateTask(id, { title, description: desc });
+          if (title) await this.taskManager.updateTask(id, { title, description: desc });
         }
 
         escapeHtml(str) {
@@ -478,9 +588,9 @@
         }
       }
 
-      window.taskManager = new TaskManager();
+      window.taskManager = new CloudTaskManager();
       window.ui = new UIManager(taskManager);
     })();
   </script>
- </body>
+</body>
 </html>
