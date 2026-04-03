@@ -1,1419 +1,698 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
- <head>
-  <link rel="shortcut icon" href="https://i.ibb.co/wZCzhSfW/2task-manager-favicon.png" type="image/png">
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Task Manager · 3‑Way Planner</title>
-  <script src="https://cdn.tailwindcss.com"></script><!-- Firebase SDKs -->
+  <title>Time Management · Smart Planner</title>
+  <link rel="icon" type="image/png" href="https://i.ibb.co/wZCzhSfW/2task-manager-favicon.png">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    :root {
+      --background: 0 0% 98%;
+      --foreground: 220 25% 20%;
+      --card-bg: 0 0% 100%;
+      --card-border: 210 20% 85%;
+      --primary: 211 85% 52%;
+      --primary-foreground: 0 0% 100%;
+      --secondary: 210 25% 92%;
+      --secondary-foreground: 220 25% 20%;
+      --muted: 210 20% 88%;
+      --muted-foreground: 215 20% 45%;
+      --accent: 145 65% 48%;
+      --accent-foreground: 0 0% 100%;
+      --destructive: 0 72% 58%;
+      --destructive-foreground: 0 0% 100%;
+      --border: 210 20% 85%;
+      --radius: 0.75rem;
     }
-
-    html, body {
-      height: 100%;
+    .dark {
+      --background: 0 0% 0%;
+      --foreground: 210 25% 88%;
+      --card-bg: transparent;
+      --card-border: 211 85% 52%;
+      --primary: 211 80% 60%;
+      --primary-foreground: 0 0% 100%;
+      --secondary: 220 20% 22%;
+      --secondary-foreground: 210 25% 85%;
+      --muted: 220 18% 24%;
+      --muted-foreground: 215 20% 55%;
+      --accent: 145 50% 42%;
+      --accent-foreground: 0 0% 100%;
+      --destructive: 0 60% 50%;
+      --destructive-foreground: 0 0% 100%;
+      --border: 220 18% 24%;
     }
-
+    * { border-color: hsl(var(--border)); }
     body {
-      font-family: 'Poppins', sans-serif;
-      background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
-      color: #1e1e1e;
-      transition: background 0.3s ease, color 0.2s ease;
-    }
-
-    body.dark-mode {
-      background: linear-gradient(135deg, #121212 0%, #1a1c1e 100%);
-      color: #e0e0e0;
-    }
-
-    .card {
-      background-color: #ffffff;
-      transition: background 0.3s ease, border 0.2s ease;
-      border: 1px solid #e2e2e2;
-    }
-
-    body.dark-mode .card {
-      background-color: #1f2327;
-      border: 1px solid #3a3f44;
-    }
-
-    .shadow-soft {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    }
-    body.dark-mode .shadow-soft {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    }
-
-    .task-checkbox {
-      appearance: none;
-      width: 22px;
-      height: 22px;
-      border: 2px solid #aaaaaa;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: all 0.15s;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background-color: transparent;
-      font-size: 16px;
-      font-weight: 500;
-    }
-    body.dark-mode .task-checkbox {
-      border-color: #7f8c8d;
-    }
-    .task-checkbox:checked {
-      background-color: #2c3e50;
-      border-color: #2c3e50;
-      color: white;
-    }
-    .task-checkbox:checked::after {
-      content: "✓";
-      line-height: 1;
-    }
-    body.dark-mode .task-checkbox:checked {
-      background-color: #6b8c9e;
-      border-color: #8aa9b9;
-    }
-    body.dark-mode .task-checkbox:checked::after {
-      color: #121212;
-    }
-
-    .column-header {
-      color: #1e1e1e;
-    }
-    body.dark-mode .column-header h2 {
-      color: #ffffff !important;
-    }
-    .column-header::before {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background-color: #2c3e50;
-      border-radius: 2px;
-    }
-    body.dark-mode .column-header::before {
-      background-color: #7f99b3;
-    }
-
-    .delete-icon {
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.15s;
-      width: 28px;
-      height: 28px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 6px;
-      font-size: 18px;
-      color: #b91c1c;
-      cursor: pointer;
-    }
-    body.dark-mode .delete-icon {
-      color: #f28b82;
-    }
-    .delete-icon.visible {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    .delete-icon:hover {
-      background: rgba(0,0,0,0.05);
-    }
-    body.dark-mode .delete-icon:hover {
-      background: rgba(255,255,255,0.1);
-    }
-
-    .pen-icon {
-      width: 28px;
-      height: 28px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 6px;
-      font-size: 18px;
-      line-height: 1;
-      color: #4a4a4a;
-      cursor: pointer;
-      background: transparent;
-      border: none;
-      transition: background 0.1s;
-    }
-    body.dark-mode .pen-icon {
-      color: #c0c0c0;
-    }
-    .pen-icon:hover {
-      background: rgba(0,0,0,0.05);
-    }
-    body.dark-mode .pen-icon:hover {
-      background: rgba(255,255,255,0.1);
-    }
-
-    .stat-badge {
-      font-size: 0.7rem;
-      padding: 0.2rem 0.8rem;
-      border-radius: 30px;
-      background: #f0f0f0;
-      color: #333;
-      font-weight: 500;
-      white-space: nowrap;
-    }
-    body.dark-mode .stat-badge {
-      background: #2f3a44;
-      color: #d1dce6;
-    }
-
-    @keyframes taskPop {
-      0% { transform: scale(1); background-color: transparent; }
-      30% { transform: scale(1.02); background-color: rgba(255, 215, 0, 0.15); }
-      100% { transform: scale(1); background-color: transparent; }
-    }
-    .task-highlight {
-      animation: taskPop 0.3s ease-out;
-    }
-
-    @keyframes fadeInScale {
-      from {
-        opacity: 0;
-        transform: scale(0.95);
-      }
-      to {
-        opacity: 1;
-        transform: scale(1);
-      }
-    }
-
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
-      }
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-
-    .loading-spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(44, 62, 80, 0.1);
-      border-top: 3px solid #2c3e50;
-      border-radius: 50%;
-      animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-    }
-    
-    body.dark-mode .loading-spinner {
-      border: 3px solid rgba(127, 153, 179, 0.2);
-      border-top: 3px solid #7f99b3;
-    }
-    
-    .loading-container {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255, 255, 255, 0.8);
-      backdrop-filter: blur(4px);
-      z-index: 1500;
-      transition: opacity 0.3s ease;
-    }
-    
-    body.dark-mode .loading-container {
-      background: rgba(18, 18, 18, 0.8);
-    }
-    
-    /* Loading container for initial auth check - fullscreen with blur */
-    .auth-loading-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255, 255, 255, 0.92);
-      backdrop-filter: blur(8px);
-      z-index: 2000;
-      transition: opacity 0.4s ease-out;
-      flex-direction: column;
-      gap: 20px;
-    }
-    
-    body.dark-mode .auth-loading-overlay {
-      background: rgba(18, 18, 18, 0.92);
-    }
-    
-    .auth-loading-spinner {
-      width: 48px;
-      height: 48px;
-      border: 4px solid rgba(44, 62, 80, 0.15);
-      border-top: 4px solid #2c3e50;
-      border-radius: 50%;
-      animation: spin 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-    }
-    
-    body.dark-mode .auth-loading-spinner {
-      border: 4px solid rgba(127, 153, 179, 0.2);
-      border-top: 4px solid #7f99b3;
-    }
-    
-    .auth-loading-text {
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: #4a5568;
-      letter-spacing: 0.3px;
-    }
-    
-    body.dark-mode .auth-loading-text {
-      color: #a0aec0;
-    }
-    
-    .auth-loading-sub {
-      font-size: 0.75rem;
-      opacity: 0.6;
-      margin-top: -8px;
-    }
-
-    .add-task-btn {
-      transition: transform 0.25s ease;
-    }
-    .add-task-btn:hover {
-      transform: scale(1.05);
-    }
-
-    /* Drag & Drop Styles */
-    .task-item.dragging {
-      opacity: 0.5;
-      cursor: grabbing;
-    }
-
-    .task-item {
-      cursor: grab;
-    }
-
-    .column-drop-zone {
-      transition: background-color 0.2s ease;
-      min-height: 200px;
-    }
-
-    .column-drop-zone.drag-over {
-      background-color: rgba(44, 62, 80, 0.08);
-      border-radius: 8px;
-    }
-
-    body.dark-mode .column-drop-zone.drag-over {
-      background-color: rgba(127, 153, 179, 0.12);
-    }
-
-    /* Undo Toast Notification */
-    .undo-toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #2c3e50;
-      color: white;
-      padding: 12px 20px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-      z-index: 1400;
-      animation: slideUp 0.3s ease-out;
-    }
-
-    body.dark-mode .undo-toast {
-      background: #6b8c9e;
-    }
-
-    .undo-toast button {
-      background: rgba(255, 255, 255, 0.2);
-      border: none;
-      color: white;
-      padding: 4px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.85rem;
+      background: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
       transition: background 0.2s;
     }
-
-    .undo-toast button:hover {
-      background: rgba(255, 255, 255, 0.3);
-    }
-
-    @keyframes slideUp {
-      from {
-        opacity: 0;
-        transform: translateX(-50%) translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-      }
-    }
-
-    @keyframes undoTimer {
-      to {
-        height: 0;
-      }
-    }
-
-    .login-btn {
-      background-color: #ffffff;
-      padding: 12px 24px;
-      border-radius: 8px;
-      color: #1e1e1e;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      border: 2px solid #000000;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      width: 100%;
-    }
-    .login-btn:hover {
-      background-color: #f0f0f0;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    body.dark-mode .login-btn {
-      background-color: #000000;
-      color: #ffffff;
-      border: 2px solid #ffffff;
-    }
-    body.dark-mode .login-btn:hover {
-      background-color: #1a1a1a;
-    }
-    
-    .user-info-header-desktop {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-shrink: 0;
-    }
-    
-    .user-info-header-desktop img {
-      width: 32px;
-      height: 32px;
-      min-width: 32px;
-      min-height: 32px;
-      border-radius: 50%;
-      object-fit: cover;
-    }
-
-    .user-info-text {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .user-info-text .name {
-      font-weight: 600;
-      font-size: 0.875rem;
-      line-height: 1.2;
-    }
-
-    .user-info-text .email {
-      font-size: 0.75rem;
-      opacity: 0.6;
-      line-height: 1.2;
-    }
-
-    /* Dark Mode Toggle Switch - FIXED VERSION */
-    .toggle-switch {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      background: none;
-      border: none;
-      outline: none;
-      padding: 0;
-    }
-
-    .toggle-switch-icon {
-      width: 52px;
-      height: 28px;
-      background: #e0e0e0;
-      border-radius: 20px;
-      transition: background 1s ease-in-out;
-      display: flex;
-      align-items: center;
-      padding: 0;
-      border: none;
-      outline: none;
-      position: relative;
-    }
-
-    body.dark-mode .toggle-switch-icon {
-      background: #2c3e50;
-    }
-
-    .toggle-slider {
-      position: absolute;
-      width: 24px;
-      height: 24px;
-      background: white;
-      border-radius: 50%;
-      transition: transform 1s ease-in-out;
-      transform: translateX(2px);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-    }
-
-    body.dark-mode .toggle-switch-icon .toggle-slider {
-      transform: translateX(calc(100% + 2px));
-    }
-
-    .toggle-label {
-      font-size: 0.75rem;
-      font-weight: 500;
-      white-space: nowrap;
-      color: #666;
-      transition: color 1s ease-in-out;
-    }
-
-    body.dark-mode .toggle-label {
-      color: #999;
-    }
-
-    .header-center-group {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      flex: 1;
-    }
-
-    .header-center-group img {
-      width: 28px;
-      height: 28px;
-    }
-
-    .header-center-group h1 {
-      font-size: 1.125rem;
+    .digital-clock-center {
+      font-family: 'Orbitron', monospace;
       font-weight: 700;
-      white-space: nowrap;
-      transition: color 0.3s ease;
-    }
-
-    body.dark-mode .header-center-group h1 {
-      color: #e0e0e0;
-    }
-
-    @media (max-width: 768px) {
-      .header-center-group {
-        flex: 0;
-        justify-content: flex-start;
-      }
-    }
-
-    /* Hamburger Menu Button */
-    .hamburger-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 8px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      z-index: 1001;
-      transition: transform 0.2s ease;
-    }
-
-    @media (min-width: 1024px) {
-      .hamburger-btn {
-        display: none;
-      }
-    }
-
-    .hamburger-line {
-      width: 24px;
-      height: 3px;
-      background: #2c3e50;
-      border-radius: 2px;
-      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    body.dark-mode .hamburger-line {
-      background: #c0c0c0;
-    }
-
-    .hamburger-btn.active .hamburger-line:nth-child(1) {
-      transform: none;
-    }
-    .hamburger-btn.active .hamburger-line:nth-child(2) {
-      opacity: 1;
-    }
-    .hamburger-btn.active .hamburger-line:nth-child(3) {
-      transform: none;
-    }
-
-    /* Navigation Menu */
-    .nav-menu {
-      position: fixed;
-      top: 60px;
-      left: -280px;
-      width: 280px;
-      background: white;
-      border-radius: 0 12px 12px 0;
-      box-shadow: 2px 4px 20px rgba(0, 0, 0, 0.1);
-      transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-      z-index: 1000;
-      overflow: hidden;
-    }
-    body.dark-mode .nav-menu {
-      background: #1f2327;
-      box-shadow: 2px 4px 20px rgba(0, 0, 0, 0.3);
-    }
-    .nav-menu.open {
-      left: 0;
-    }
-
-    .nav-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0);
-      opacity: 0;
-      visibility: hidden;
-      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-      z-index: 999;
-    }
-    .nav-overlay.active {
-      background: rgba(0, 0, 0, 0.4);
-      opacity: 1;
-      visibility: visible;
-    }
-
-    .nav-item {
-      padding: 16px 24px;
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      border-left: 4px solid transparent;
-      color: #1e1e1e;
-    }
-    body.dark-mode .nav-item {
-      color: #e0e0e0;
-    }
-    .nav-item:hover {
-      background: rgba(44, 62, 80, 0.08);
-      transform: translateX(6px);
-    }
-    body.dark-mode .nav-item:hover {
-      background: rgba(123, 152, 158, 0.15);
-    }
-    .nav-item.active {
-      border-left-color: #2c3e50;
-      background: rgba(44, 62, 80, 0.1);
-      color: #2c3e50;
-      font-weight: 600;
-    }
-    body.dark-mode .nav-item.active {
-      border-left-color: #7f99b3;
-      background: rgba(127, 153, 179, 0.15);
-      color: #7f99b3;
-    }
-
-    .nav-profile-section {
-      padding: 16px 24px;
-      border-bottom: 1px solid #e2e2e2;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      justify-content: space-between;
-    }
-
-    body.dark-mode .nav-profile-section {
-      border-bottom-color: #3a3f44;
-    }
-
-    .nav-profile-section img {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      object-fit: cover;
-      flex-shrink: 0;
-    }
-
-    .nav-profile-info {
-      flex: 1;
-      min-w-0;
-    }
-
-    .nav-profile-info .name {
-      font-weight: 600;
-      font-size: 0.9rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .nav-profile-info .email {
-      font-size: 0.75rem;
-      opacity: 0.6;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .logout-btn-small {
-      cursor: pointer;
-      padding: 0.4rem 0.8rem;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      background: #dc2626;
-      color: white;
-      border: none;
-      transition: all 0.3s ease;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .logout-btn-small:hover {
-      background: #ef4444;
-    }
-    
-    /* Glassmorphic Notification Modal */
-    .update-modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(8px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 2000;
-      animation: fadeInScale 0.3s ease-out;
-    }
-    
-    .update-modal {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(20px);
-      border-radius: 32px;
-      max-width: 480px;
-      width: 90%;
-      padding: 32px 28px;
-      text-align: center;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      transition: all 0.3s ease;
-    }
-    
-    body.dark-mode .update-modal {
-      background: rgba(31, 35, 39, 0.95);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    
-    .update-modal-icon {
-      width: 80px;
-      height: 80px;
-      margin: 0 auto 20px auto;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .update-modal-icon img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-    
-    .update-modal h3 {
-      font-size: 1.75rem;
-      font-weight: 700;
-      margin-bottom: 12px;
-      color: #1e1e1e;
-    }
-    
-    body.dark-mode .update-modal h3 {
-      color: #ffffff;
-    }
-    
-    .update-version-badge {
-      display: inline-block;
-      background: rgba(0, 0, 0, 0.08);
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      margin-bottom: 20px;
-      color: #4a5568;
-    }
-    
-    body.dark-mode .update-version-badge {
-      background: rgba(255, 255, 255, 0.1);
-      color: #a0aec0;
-    }
-    
-    .update-modal p {
-      font-size: 1rem;
-      line-height: 1.6;
-      margin-bottom: 28px;
-      color: #2d3748;
-    }
-    
-    body.dark-mode .update-modal p {
-      color: #cbd5e0;
-    }
-    
-    .got-it-btn {
-      background: #2c3e50;
-      color: white;
-      border: none;
-      padding: 12px 32px;
-      border-radius: 40px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      width: 100%;
-    }
-    
-    .got-it-btn:hover {
-      background: #1e2a36;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-    
-    body.dark-mode .got-it-btn {
-      background: #6b8c9e;
-    }
-    
-    body.dark-mode .got-it-btn:hover {
-      background: #7f99b3;
-    }
-    
-    /* Sign-in page specific styles */
-    .attractive-text {
       font-size: 1.5rem;
-      line-height: 1.2;
-      font-weight: 600;
-      letter-spacing: -0.02em;
+      letter-spacing: 1px;
     }
-    
-    @media (max-width: 640px) {
-      .attractive-text {
-        font-size: 1.25rem;
-      }
+    .task-card {
+      background: hsl(var(--card-bg));
+      border: 1px solid hsl(var(--card-border));
+      border-radius: var(--radius);
+      transition: all 0.2s ease;
+    }
+    .dark .task-card {
+      background: transparent;
+      border: 1px solid hsl(var(--card-border));
+      box-shadow: none;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes scaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+    @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100px); opacity: 0; } }
+    @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+    .animate-scale-in { animation: scaleIn 0.2s ease-out; }
+    .animate-slide-out { animation: slideOutRight 0.25s forwards; }
+    .undo-toast { animation: slideInRight 0.25s ease-out forwards; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: hsl(var(--muted)); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 10px; }
+    .loading-quote { font-weight: 300; font-size: 0.9rem; max-width: 280px; text-align: center; line-height: 1.4; }
+    .settings-panel {
+      background: hsl(var(--card-bg));
+      border: 1px solid hsl(var(--border));
+      border-radius: var(--radius);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    }
+    .dark .settings-panel { background: #0a0a0a; }
+    .auto-expand-textarea { overflow: hidden; resize: none; }
+    .clock-shadow {
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1));
+    }
+    .dark .clock-shadow {
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-  <style>body { box-sizing: border-box; }</style>
-  <script src="https://cdn.tailwindcss.com/3.4.17" type="text/javascript"></script>
-  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
-  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
- </head>
- <body class="h-full flex flex-col">
-  <!-- Navigation Menu -->
-  <div class="nav-menu" id="navMenu">
-   <div class="nav-profile-section" id="navProfileSection"></div>
-   <div class="nav-item active" data-column="today">
-    Today
-   </div>
-   <div class="nav-item" data-column="soon">
-    Soon
-   </div>
-   <div class="nav-item" data-column="future">
-    Future
-   </div>
-  </div>
-  <div class="nav-overlay" id="navOverlay"></div>
-  <div id="app" class="h-full flex flex-col overflow-hidden"></div>
-  <script>
-    (function() {
-      const firebaseConfig = {
-        apiKey: "AIzaSyAumnsP0kSHifAmTS_eovt_olOg1opw-jY",
-        authDomain: "my-task-manager-edb96.firebaseapp.com",
-        projectId: "my-task-manager-edb96",
-        storageBucket: "my-task-manager-edb96.firebasestorage.app",
-        messagingSenderId: "793073603673",
-        appId: "1:793073603673:web:955e044384ff735e25cd48"
-      };
+</head>
+<body>
+  <div id="root"></div>
 
-      firebase.initializeApp(firebaseConfig);
-      const auth = firebase.auth();
-      const db = firebase.firestore();
-      
-      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-        .catch((error) => console.error("Error setting persistence:", error));
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useRef } = React;
 
-      const COLUMN_INFO = {
-        today: { title: 'Must have done Today', color: '#2c3e50', desc: '' },
-        soon: { title: 'I will do this soon', color: '#2c3e50', desc: '' },
-        future: { title: 'I will do in future', color: '#2c3e50', desc: '' }
-      };
+    // ---------- FIREBASE ----------
+    const firebaseConfig = {
+      apiKey: "AIzaSyAumnsP0kSHifAmTS_eovt_olOg1opw-jY",
+      authDomain: "my-task-manager-edb96.firebaseapp.com",
+      projectId: "my-task-manager-edb96",
+      storageBucket: "my-task-manager-edb96.firebasestorage.app",
+      messagingSenderId: "793073603673",
+      appId: "1:793073603673:web:955e044384ff735e25cd48"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-      const APP_VERSION = "1.1.0";
-      const UPDATE_MESSAGE = "Auto-login feature added. You will stay signed in even after closing the browser. No more repeated sign-ins required.";
+    // ---------- UTILS ----------
+    function formatTime(time24, use24Hour) {
+      if (!time24) return "";
+      if (use24Hour) return time24;
+      const [h, m] = time24.split(":").map(Number);
+      const period = h >= 12 ? "PM" : "AM";
+      const h12 = h % 12 || 12;
+      return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
+    }
+    function formatRange(start, end, use24Hour) {
+      return `${formatTime(start, use24Hour)} – ${formatTime(end, use24Hour)}`;
+    }
+    function formatDateOnly(dateStr) {
+      if (!dateStr) return "";
+      const d = new Date(dateStr);
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    function timeToMin(t) {
+      if (!t) return 0;
+      const [h, m] = t.split(":").map(Number);
+      return h * 60 + m;
+    }
+    function getCurrentMinutes() {
+      const now = new Date();
+      return now.getHours() * 60 + now.getMinutes();
+    }
+    function getTodayDate() {
+      return new Date().toISOString().slice(0,10);
+    }
 
-      class CloudTaskManager {
-        constructor() {
-          this.tasks = [];
-          this.listeners = [];
-          this.currentUser = null;
-          this.unsubscribe = null;
-          this.isLoading = true;
-          this.deletedTasks = [];
-          this.settings = { undoTimeMs: 5000 };
-        }
+    // ---------- LOADING QUOTES ----------
+    const timeFacts = [
+      "Time is the most valuable thing you can spend. — Theophrastus",
+      "The key is in not spending time, but in investing it. — Stephen R. Covey",
+      "Lost time is never found again. — Benjamin Franklin",
+      "Time you enjoy wasting is not wasted time. — Marthe Troly-Curtin",
+      "The trouble is, you think you have time. — Buddha",
+      "Yesterday is gone. Tomorrow has not yet come. We have only today. — Mother Teresa",
+      "Time flies over us, but leaves its shadow behind. — Nathaniel Hawthorne",
+      "Better three hours too soon than a minute too late. — William Shakespeare"
+    ];
 
-        setUser(user) {
-          this.currentUser = user;
-          if (user) {
-            this.isLoading = true;
-            this.notify();
-            this.startSync();
-          } else {
-            if (this.unsubscribe) {
-              this.unsubscribe();
-              this.unsubscribe = null;
+    // ---------- HOOKS ----------
+    function useTheme() {
+      const [isDark, setIsDark] = useState(() => localStorage.getItem("theme") === "dark");
+      useEffect(() => {
+        const root = document.documentElement;
+        if (isDark) root.classList.add("dark");
+        else root.classList.remove("dark");
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+      }, [isDark]);
+      return { isDark, toggle: () => setIsDark(v => !v) };
+    }
+
+    function useFirestoreTasks(user, autoResetToday) {
+      const [tasks, setTasks] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [undoStack, setUndoStack] = useState([]);
+
+      // Daily reset for "today" column
+      useEffect(() => {
+        if (!user || !autoResetToday) return;
+        const checkAndReset = async () => {
+          const lastReset = localStorage.getItem(`lastReset_${user.uid}`);
+          const today = getTodayDate();
+          if (lastReset !== today) {
+            const todayTasks = tasks.filter(t => t.column === 'today' && t.completed === true);
+            for (const task of todayTasks) {
+              await db.collection('users').doc(user.uid).collection('tasks').doc(task.id).update({ completed: false });
             }
-            this.tasks = [];
-            this.isLoading = false;
-            this.notify();
+            localStorage.setItem(`lastReset_${user.uid}`, today);
           }
-        }
+        };
+        checkAndReset();
+      }, [user, tasks, autoResetToday]);
 
-        startSync() {
-          if (!this.currentUser) return;
-          const userTasksRef = db.collection('users').doc(this.currentUser.uid).collection('tasks');
-          this.unsubscribe = userTasksRef.onSnapshot((snapshot) => {
-            this.tasks = [];
-            snapshot.forEach((doc) => {
-              this.tasks.push({ id: doc.id, ...doc.data() });
-            });
-            this.isLoading = false;
-            this.notify();
-          });
-        }
+      useEffect(() => {
+        if (!user) { setTasks([]); setLoading(false); return; }
+        setLoading(true);
+        const ref = db.collection('users').doc(user.uid).collection('tasks');
+        const unsubscribe = ref.onSnapshot(snapshot => {
+          const loaded = [];
+          snapshot.forEach(doc => loaded.push({ id: doc.id, ...doc.data() }));
+          setTasks(loaded);
+          setLoading(false);
+        });
+        return () => unsubscribe();
+      }, [user]);
 
-        async addTask(title, column, description = '') {
-          if (!this.currentUser) return;
-          const task = { title, description, column, completed: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
-          await db.collection('users').doc(this.currentUser.uid).collection('tasks').add(task);
-        }
+      const addTask = useCallback(async (data) => {
+        if (!user) return;
+        const newTask = { ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp(), completed: false };
+        await db.collection('users').doc(user.uid).collection('tasks').add(newTask);
+      }, [user]);
 
-        async updateTask(id, updates) {
-          if (!this.currentUser) return;
-          await db.collection('users').doc(this.currentUser.uid).collection('tasks').doc(id).update(updates);
-        }
+      const updateTask = useCallback(async (id, updates) => {
+        if (!user) return;
+        await db.collection('users').doc(user.uid).collection('tasks').doc(id).update(updates);
+      }, [user]);
 
-        async deleteTask(id) {
-          if (!this.currentUser) return;
-          const task = this.tasks.find(t => t.id === id);
-          if (task) {
-            this.deletedTasks.push({ task, deleteTime: Date.now() });
-          }
-          await db.collection('users').doc(this.currentUser.uid).collection('tasks').doc(id).delete();
-        }
-
-        async restoreTask(task) {
-          if (!this.currentUser) return;
-          const { id, ...taskData } = task;
-          await db.collection('users').doc(this.currentUser.uid).collection('tasks').doc(id).set(taskData);
-          this.deletedTasks = this.deletedTasks.filter(dt => dt.task.id !== id);
-        }
-
-        getTasksByColumn(column) {
-          return this.tasks.filter(t => t.column === column).sort((a, b) => {
-            if (a.completed === b.completed) return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
-            return a.completed ? 1 : -1;
-          });
-        }
-
-        subscribe(listener) { this.listeners.push(listener); }
-        notify() { this.listeners.forEach(l => l()); }
-      }
-
-      class UIManager {
-        constructor(taskManager) {
-          this.taskManager = taskManager;
-          this.isDark = localStorage.getItem('taskmanager_dark') === 'true';
-          this.highlightedTaskId = null;
-          this.user = null;
-          this.currentColumn = 'today';
-          this.menuOpen = false;
-          this.authCheckComplete = false;
-          this.draggedTaskId = null;
-          this.draggedFromColumn = null;
-          this.init();
-        }
-
-        init() {
-          if (this.isDark) document.body.classList.add('dark-mode');
-          
-          // Show loading overlay while checking auth state
-          this.showAuthLoadingOverlay();
-          
-          auth.onAuthStateChanged((user) => {
-            this.user = user;
-            this.authCheckComplete = true;
-            // Remove loading overlay once auth state is determined
-            this.hideAuthLoadingOverlay();
-            this.taskManager.setUser(user);
-            this.render();
-            if (user) this.showUpdateNotification();
-          });
-          
-          this.taskManager.subscribe(() => this.render());
-          this.render();
-          setTimeout(() => this.setupEventListeners(), 100);
-        }
-
-        showAuthLoadingOverlay() {
-          if (document.getElementById('authLoadingOverlay')) return;
-          const overlay = document.createElement('div');
-          overlay.id = 'authLoadingOverlay';
-          overlay.className = 'auth-loading-overlay';
-          overlay.innerHTML = `
-            <div class="auth-loading-spinner"></div>
-            <div class="auth-loading-text">Checking session...</div>
-            <div class="auth-loading-sub">Loading your workspace</div>
-          `;
-          document.body.appendChild(overlay);
-        }
-
-        hideAuthLoadingOverlay() {
-          const overlay = document.getElementById('authLoadingOverlay');
-          if (overlay) {
-            overlay.style.opacity = '0';
-            setTimeout(() => {
-              if (overlay && overlay.parentNode) overlay.remove();
-            }, 300);
-          }
-        }
-
-        showUpdateNotification() {
-          const seenUpdate = localStorage.getItem(`update_seen_${APP_VERSION}_${this.user?.uid}`);
-          if (!seenUpdate && this.user) {
-            const modalOverlay = document.createElement('div');
-            modalOverlay.className = 'update-modal-overlay';
-            modalOverlay.innerHTML = `
-              <div class="update-modal">
-                <div class="update-modal-icon">
-                  <img src="https://i.ibb.co/ZRmYYkqt/changes.png" alt="Update notification">
-                </div>
-                <h3>What's New</h3>
-                <div class="update-version-badge">Version ${APP_VERSION}</div>
-                <p>${UPDATE_MESSAGE}</p>
-                <button class="got-it-btn" id="gotItBtn">Got it</button>
-              </div>
-            `;
-            document.body.appendChild(modalOverlay);
-            modalOverlay.querySelector('#gotItBtn').addEventListener('click', () => {
-              localStorage.setItem(`update_seen_${APP_VERSION}_${this.user.uid}`, 'true');
-              modalOverlay.remove();
-            });
-          }
-        }
-
-        setupEventListeners() {
-          const hamburger = document.getElementById('hamburger');
-          const navMenu = document.getElementById('navMenu');
-          const navOverlay = document.getElementById('navOverlay');
-          const navItems = document.querySelectorAll('.nav-item[data-column]');
-
-          if (hamburger) hamburger.onclick = (e) => { e.stopPropagation(); this.toggleMenu(); };
-          if (navOverlay) navOverlay.onclick = () => this.closeMenu();
-          navItems.forEach(item => {
-            item.onclick = () => {
-              const column = item.dataset.column;
-              if (column) { this.switchColumn(column); this.closeMenu(); }
-            };
-          });
-          const toggleSwitch = document.getElementById('toggleSwitch');
-          if (toggleSwitch) toggleSwitch.onclick = (e) => { e.preventDefault(); this.toggleDarkMode(); };
-          if (navMenu) navMenu.onclick = (e) => e.stopPropagation();
-          
-          // Setup drag and drop
-          this.setupDragAndDrop();
-        }
-
-        setupDragAndDrop() {
-          document.addEventListener('dragstart', (e) => {
-            if (e.target.classList.contains('task-item')) {
-              this.draggedTaskId = e.target.id.replace('task-', '');
-              this.draggedFromColumn = null;
-              for (const col of ['today', 'soon', 'future']) {
-                const tasks = this.taskManager.getTasksByColumn(col);
-                if (tasks.find(t => t.id === this.draggedTaskId)) {
-                  this.draggedFromColumn = col;
-                  break;
-                }
-              }
-              e.target.classList.add('dragging');
-              e.dataTransfer.effectAllowed = 'move';
-            }
-          });
-
-          document.addEventListener('dragend', (e) => {
-            e.target.classList.remove('dragging');
-            document.querySelectorAll('.column-drop-zone').forEach(zone => {
-              zone.classList.remove('drag-over');
-            });
-          });
-
-          document.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            const zone = e.target.closest('.column-drop-zone');
-            if (zone) {
-              document.querySelectorAll('.column-drop-zone').forEach(z => {
-                z.classList.remove('drag-over');
-              });
-              zone.classList.add('drag-over');
-            }
-          });
-
-          document.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            const zone = e.target.closest('.column-drop-zone');
-            if (zone && this.draggedTaskId) {
-              const targetColumn = zone.dataset.column;
-              const task = this.taskManager.tasks.find(t => t.id === this.draggedTaskId);
-              if (task && targetColumn && targetColumn !== this.draggedFromColumn) {
-                await this.taskManager.updateTask(this.draggedTaskId, { column: targetColumn });
-              }
-            }
-          });
-        }
-
-        toggleMenu() { this.menuOpen ? this.closeMenu() : this.openMenu(); }
-        openMenu() {
-          this.menuOpen = true;
-          document.getElementById('hamburger')?.classList.add('active');
-          document.getElementById('navMenu')?.classList.add('open');
-          document.getElementById('navOverlay')?.classList.add('active');
-        }
-        closeMenu() {
-          this.menuOpen = false;
-          document.getElementById('hamburger')?.classList.remove('active');
-          document.getElementById('navMenu')?.classList.remove('open');
-          document.getElementById('navOverlay')?.classList.remove('active');
-        }
-        switchColumn(column) { this.currentColumn = column; this.updateActiveNavItem(); this.render(); }
-        updateActiveNavItem() {
-          document.querySelectorAll('.nav-item').forEach(item => {
-            if (item.dataset.column === this.currentColumn) item.classList.add('active');
-            else item.classList.remove('active');
-          });
-        }
-        toggleDarkMode() {
-          this.isDark = !this.isDark;
-          document.body.classList.toggle('dark-mode');
-          localStorage.setItem('taskmanager_dark', this.isDark);
-          this.render();
-        }
-        setHighlight(id) { this.highlightedTaskId = id; }
-        login() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
-        logout() { auth.signOut(); }
-
-        render() {
-          const app = document.getElementById('app');
-          if (!this.user) {
-            app.innerHTML = this.getLoginHTML();
-          } else {
-            if (this.taskManager.isLoading) {
-              app.innerHTML = this.getLoadingHTML();
-            } else {
-              app.innerHTML = this.getAppHTML();
-              this.updateNavProfile();
-              setTimeout(() => this.setupEventListeners(), 50);
-            }
-          }
-        }
-
-        getLoadingHTML() {
-          return `
-            <div class="loading-container">
-              <div class="loading-spinner"></div>
-            </div>
-            <header class="card shadow-soft px-4 py-3 border-b flex-shrink-0 opacity-0">
-              <div class="flex items-center justify-between gap-4">
-                <div class="user-info-header-desktop hidden lg:flex">
-                  <div class="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
-                  <div class="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
-                </div>
-                <div class="header-center-group">
-                  <div class="w-7 h-7 bg-gray-200 rounded animate-pulse"></div>
-                  <div class="h-5 w-32 bg-gray-200 rounded animate-pulse"></div>
-                </div>
-                <div class="w-12 h-8 bg-gray-200 rounded animate-pulse"></div>
-              </div>
-            </header>
-            <main class="flex-1 overflow-y-auto p-4">
-              <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-7xl mx-auto">
-                ${['today', 'soon', 'future'].map(() => `
-                  <div class="card shadow-soft rounded-xl p-4 min-h-[500px]">
-                    <div class="h-6 w-32 bg-gray-200 rounded animate-pulse mb-4"></div>
-                    <div class="space-y-2">
-                      <div class="h-16 bg-gray-200 rounded animate-pulse"></div>
-                      <div class="h-16 bg-gray-200 rounded animate-pulse"></div>
-                      <div class="h-16 bg-gray-200 rounded animate-pulse"></div>
-                    </div>
-                    <div class="h-10 bg-gray-200 rounded animate-pulse mt-4"></div>
-                  </div>
-                `).join('')}
-              </div>
-            </main>
-          `;
-        }
-
-        getLoginHTML() {
-          return `
-            <div class="h-full flex items-center justify-center p-4">
-              <div class="card shadow-soft rounded-xl p-8 max-w-md w-full text-center">
-                <div style="margin-bottom: 24px;">
-                  <img src="https://i.ibb.co/wZCzhSfW/2task-manager-favicon.png" alt="Task Manager" style="width: 64px; height: 64px; margin: 0 auto;">
-                </div>
-                
-                <div class="attractive-text mb-3">
-                  Organize your day.<br>
-                  Focus on what matters.
-                </div>
-                
-                <p class="text-sm opacity-70 mb-8">
-                  Three simple columns to plan your tasks
-                </p>
-                
-                <button onclick="ui.login()" class="login-btn w-full flex items-center justify-center gap-2">
-                  <img src="https://www.gstatic.com/images/branding/product/1x/googleg_48dp.png" alt="Google" style="width: 20px; height: 20px;">
-                  Sign in with Google
-                </button>
-                
-                <p class="text-xs opacity-60 mt-6">
-                  Start organizing your tasks today — it's free
-                </p>
-              </div>
-            </div>
-          `;
-        }
-
-        getAppHTML() {
-          const userEmail = this.user.email ? this.user.email.split('@')[0] : 'User';
-          const displayName = this.user.displayName || 'User';
-          const isMobile = window.innerWidth < 1024;
-          const columnsToShow = isMobile ? [this.currentColumn] : ['today', 'soon', 'future'];
-          
-          return `
-            <header class="card shadow-soft px-4 py-3 border-b flex-shrink-0">
-              <div class="flex items-center justify-between gap-4">
-                <div class="user-info-header-desktop hidden lg:flex">
-                  <img src="${this.user.photoURL || 'https://via.placeholder.com/40'}" alt="">
-                  <div class="user-info-text">
-                    <div class="name">${this.escapeHtml(displayName)}</div>
-                    <div class="email">${this.escapeHtml(userEmail)}</div>
-                  </div>
-                  <button onclick="ui.logout()" class="logout-btn-small">Logout</button>
-                </div>
-                <div class="header-center-group">
-                  <button id="hamburger" class="hamburger-btn md:hidden">
-                    <div class="hamburger-line"></div>
-                    <div class="hamburger-line"></div>
-                    <div class="hamburger-line"></div>
-                  </button>
-                  <img src="https://i.ibb.co/wZCzhSfW/2task-manager-favicon.png" alt="Task Manager">
-                  <h1>Task Manager</h1>
-                </div>
-                <button id="toggleSwitch" class="toggle-switch">
-                  <div class="toggle-switch-icon"><div class="toggle-slider"></div></div>
-                  <span class="toggle-label">${this.isDark ? 'Light mode' : 'Dark mode'}</span>
-                </button>
-              </div>
-            </header>
-            <main class="flex-1 overflow-y-auto p-4">
-              <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-7xl mx-auto">
-                ${columnsToShow.map(col => this.renderColumn(col)).join('')}
-              </div>
-            </main>
-          `;
-        }
-
-        renderColumn(column) {
-          const tasks = this.taskManager.getTasksByColumn(column);
-          const info = COLUMN_INFO[column];
-          return `
-            <div class="card shadow-soft rounded-xl p-4 flex flex-col min-h-[500px]">
-              <div class="column-header relative pb-2 mb-4">
-                <h2 class="text-base font-bold" style="color: ${info.color};">${info.title}</h2>
-              </div>
-              <div class="column-drop-zone flex-1 space-y-2 mb-4" data-column="${column}">
-                ${tasks.length === 0 ? `<div class="text-center py-12 text-sm opacity-40">no tasks yet</div>` : tasks.map(task => this.renderTask(task)).join('')}
-              </div>
-              <button onclick="ui.showAddForm('${column}')" class="add-task-btn w-full py-3 rounded-lg font-medium text-white transition" style="background-color: ${info.color};">+ Add task</button>
-            </div>
-          `;
-        }
-
-        renderTask(task) {
-          const bgColor = this.isDark ? '#262e36' : '#fafbfc';
-          const borderColor = this.isDark ? '#3e4853' : '#edf0f2';
-          const highlightClass = (this.highlightedTaskId === task.id) ? 'task-highlight' : '';
-          const deleteVisible = task.completed ? 'visible' : '';
-          return `
-            <div id="task-${task.id}" class="task-item p-3 rounded-lg ${highlightClass}" style="background-color: ${bgColor}; border: 1px solid ${borderColor};" draggable="true">
-              <div class="flex items-center gap-2">
-                <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} onchange="ui.toggleTaskDone('${task.id}', this.checked)">
-                <span class="delete-icon ${deleteVisible}" onclick="ui.deleteTask('${task.id}')" title="delete">✕</span>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium break-words ${task.completed ? 'line-through opacity-40' : ''}">${this.escapeHtml(task.title)}</p>
-                  ${task.description ? `<p class="text-xs opacity-50 break-words leading-tight">${this.escapeHtml(task.description)}</p>` : ''}
-                </div>
-                <button onclick="ui.showEditForm('${task.id}')" class="pen-icon" title="edit task">✎</button>
-              </div>
-            </div>
-          `;
-        }
-
-        async toggleTaskDone(id, isChecked) { this.setHighlight(id); await this.taskManager.updateTask(id, { completed: isChecked }); setTimeout(() => { this.highlightedTaskId = null; }, 400); }
+      const deleteTask = useCallback(async (id) => {
+        if (!user) return;
+        const taskToDelete = tasks.find(t => t.id === id);
+        if (!taskToDelete) return;
+        await db.collection('users').doc(user.uid).collection('tasks').doc(id).delete();
         
-        async deleteTask(id) { 
-          await this.taskManager.deleteTask(id); 
-          this.showUndoToast(id);
-        }
-
-        showUndoToast(taskId) {
-          const deletedTaskWrapper = this.taskManager.deletedTasks[this.taskManager.deletedTasks.length - 1];
-          if (!deletedTaskWrapper) return;
-          
-          const toast = document.createElement('div');
-          toast.className = 'undo-toast';
-          toast.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
-              <span>Task deleted</span>
-              <button onclick="ui.undoDelete('${taskId}')" style="background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: background 0.2s;">Undo</button>
-            </div>
-            <div style="width: 3px; height: 20px; background: #fbbf24; border-radius: 2px; animation: undoTimer 5s linear forwards; margin-left: 12px;"></div>
-          `;
-          document.body.appendChild(toast);
-          
-          setTimeout(() => {
-            if (toast.parentNode) {
-              toast.remove();
-            }
-          }, this.taskManager.settings.undoTimeMs);
-        }
-
-        async undoDelete(taskId) {
-          const deletedTaskWrapper = this.taskManager.deletedTasks.find(dt => dt.task.id === taskId);
-          if (deletedTaskWrapper) {
-            await this.taskManager.restoreTask(deletedTaskWrapper.task);
-            const toasts = document.querySelectorAll('.undo-toast');
-            toasts.forEach(t => t.remove());
+        let remaining = 5;
+        const intervalId = setInterval(() => {
+          remaining--;
+          if (remaining <= 0) {
+            clearInterval(intervalId);
+            setUndoStack(prev => prev.filter(item => item.task.id !== id));
+          } else {
+            setUndoStack(prev => prev.map(item => item.task.id === id ? { ...item, remaining } : item));
           }
-        }
+        }, 1000);
+        setUndoStack(prev => [...prev, { task: taskToDelete, remaining, intervalId }]);
+      }, [user, tasks]);
 
-        showAddForm(column) {
-          const info = COLUMN_INFO[column];
-          const modal = document.createElement('div');
-          modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50';
-          modal.innerHTML = `
-            <div class="card rounded-xl p-5 w-full max-w-sm">
-              <h3 class="text-lg font-bold mb-3">new task · ${info.title}</h3>
-              <input type="text" id="modal-title" placeholder="task title" class="w-full p-2 rounded-lg mb-2 border ${this.isDark ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-300'}">
-              <textarea id="modal-desc" placeholder="description (optional)" class="w-full p-2 rounded-lg mb-3 border resize-none ${this.isDark ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-300'}" rows="2"></textarea>
-              <div class="flex gap-2">
-                <button onclick="this.closest('.fixed').remove()" class="flex-1 py-1.5 rounded border">cancel</button>
-                <button onclick="ui.addTask('${column}'); this.closest('.fixed').remove();" class="flex-1 py-1.5 rounded text-white" style="background-color: ${info.color};">add</button>
-              </div>
-            </div>
-          `;
-          document.body.appendChild(modal);
-          const titleInput = document.getElementById('modal-title');
-          titleInput?.focus();
-          titleInput?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && titleInput.value.trim()) {
-              ui.addTask(column);
-              modal.remove();
-            }
-          });
-        }
+      const undoDelete = useCallback(async (task) => {
+        const item = undoStack.find(i => i.task.id === task.id);
+        if (item) clearInterval(item.intervalId);
+        setUndoStack(prev => prev.filter(i => i.task.id !== task.id));
+        const { id, ...taskData } = task;
+        await db.collection('users').doc(user.uid).collection('tasks').doc(id).set(taskData);
+      }, [user, undoStack]);
 
-        async addTask(column) { const title = document.getElementById('modal-title')?.value.trim(); const desc = document.getElementById('modal-desc')?.value.trim() || ''; if (title) await this.taskManager.addTask(title, column, desc); }
+      const toggleCompleted = useCallback(async (id, current) => {
+        await updateTask(id, { completed: !current });
+      }, [updateTask]);
 
-        showEditForm(id) {
-          const task = this.taskManager.tasks.find(t => t.id === id);
-          if (!task) return;
-          const modal = document.createElement('div');
-          modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50';
-          modal.innerHTML = `
-            <div class="card rounded-xl p-5 w-full max-w-sm">
-              <h3 class="text-lg font-bold mb-3">edit task</h3>
-              <input type="text" id="modal-edit-title" value="${this.escapeHtml(task.title)}" class="w-full p-2 rounded-lg mb-2 border ${this.isDark ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-300'}">
-              <textarea id="modal-edit-desc" class="w-full p-2 rounded-lg mb-3 border resize-none ${this.isDark ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-300'}" rows="2">${this.escapeHtml(task.description || '')}</textarea>
-              <div class="flex gap-2">
-                <button onclick="this.closest('.fixed').remove()" class="flex-1 py-1.5 rounded border">cancel</button>
-                <button onclick="ui.updateTask('${id}'); this.closest('.fixed').remove();" class="flex-1 py-1.5 rounded text-white" style="background-color: #4f5b66;">save</button>
-              </div>
-            </div>
-          `;
-          document.body.appendChild(modal);
-          const titleInput = document.getElementById('modal-edit-title');
-          titleInput?.focus();
-          titleInput?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && titleInput.value.trim()) {
-              ui.updateTask(id);
-              modal.remove();
-            }
-          });
-        }
+      return { tasks, loading, addTask, updateTask, deleteTask, toggleCompleted, undoStack, undoDelete };
+    }
 
-        async updateTask(id) { const title = document.getElementById('modal-edit-title')?.value.trim(); const desc = document.getElementById('modal-edit-desc')?.value.trim() || ''; if (title) await this.taskManager.updateTask(id, { title, description: desc }); }
-
-        updateNavProfile() {
-          const navProfileSection = document.getElementById('navProfileSection');
-          if (!navProfileSection) return;
-          const userEmail = this.user.email ? this.user.email.split('@')[0] : 'User';
-          const displayName = this.user.displayName || 'User';
-          navProfileSection.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
-              <img src="${this.user.photoURL || 'https://via.placeholder.com/40'}" alt="">
-              <div class="nav-profile-info">
-                <div class="name">${this.escapeHtml(displayName)}</div>
-                <div class="email">${this.escapeHtml(userEmail)}</div>
-              </div>
-            </div>
-            <button onclick="ui.logout()" class="logout-btn-small">Logout</button>
-          `;
-        }
-
-        escapeHtml(str) { return String(str).replace(/[&<>"]/g, function(m) { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; if (m === '"') return '&quot;'; return m; }); }
+    // ---------- COMPONENTS ----------
+    // Large analog clock with digital time inside
+    function LargeLiveClock({ tasksToday, is24Hour }) {
+      const [currentTime, setCurrentTime] = useState(new Date());
+      useEffect(() => {
+        const interval = setInterval(() => setCurrentTime(new Date()), 100);
+        return () => clearInterval(interval);
+      }, []);
+      const hours = currentTime.getHours();
+      const minutes = currentTime.getMinutes();
+      const seconds = currentTime.getSeconds();
+      const hourDeg = ((hours % 12) / 12) * 360 + (minutes / 60) * 30;
+      const minuteDeg = (minutes / 60) * 360 + (seconds / 60) * 6;
+      const secondDeg = (seconds / 60) * 360;
+      
+      let digitalHours = hours;
+      let digitalPeriod = '';
+      if (!is24Hour) {
+        digitalPeriod = hours >= 12 ? 'PM' : 'AM';
+        digitalHours = hours % 12 || 12;
       }
+      const digitalTimeStr = is24Hour 
+        ? `${digitalHours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}`
+        : `${digitalHours}:${minutes.toString().padStart(2,'0')}`;
+      const digitalFull = is24Hour ? digitalTimeStr : `${digitalTimeStr} ${digitalPeriod}`;
+      
+      const size = 240;
+      const center = size/2;
+      const radius = size * 0.42;
+      
+      const taskArcs = tasksToday.filter(t => t.startTime && t.endTime && !t.completed).map(task => {
+        const startMin = timeToMin(task.startTime);
+        const endMin = timeToMin(task.endTime);
+        let startDeg = (startMin / (24 * 60)) * 360;
+        let endDeg = (endMin / (24 * 60)) * 360;
+        if (endDeg < startDeg) endDeg += 360;
+        return { startDeg, endDeg, color: '#3b82f6' };
+      });
+      
+      return (
+        <div className="flex justify-center">
+          <div className="relative clock-shadow" style={{ width: size, height: size }}>
+            <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full">
+              <circle cx={center} cy={center} r={radius+5} fill="none" stroke={`hsl(var(--border))`} strokeWidth="1.5" opacity="0.3" />
+              {[...Array(12)].map((_, i) => {
+                const angle = (i * 30 - 90) * Math.PI / 180;
+                const x1 = center + (radius-8) * Math.cos(angle);
+                const y1 = center + (radius-8) * Math.sin(angle);
+                const x2 = center + (radius+2) * Math.cos(angle);
+                const y2 = center + (radius+2) * Math.sin(angle);
+                return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={`hsl(var(--foreground))`} strokeWidth="2" opacity="0.6" />;
+              })}
+              {taskArcs.map((arc, idx) => {
+                const startRad = (arc.startDeg - 90) * Math.PI / 180;
+                const endRad = (arc.endDeg - 90) * Math.PI / 180;
+                const rArc = radius - 8;
+                const x1 = center + rArc * Math.cos(startRad);
+                const y1 = center + rArc * Math.sin(startRad);
+                const x2 = center + rArc * Math.cos(endRad);
+                const y2 = center + rArc * Math.sin(endRad);
+                const large = arc.endDeg - arc.startDeg > 180 ? 1 : 0;
+                return <path key={idx} d={`M ${x1} ${y1} A ${rArc} ${rArc} 0 ${large} 1 ${x2} ${y2}`} stroke={arc.color} strokeWidth="5" fill="none" opacity="0.4" />;
+              })}
+              <line x1={center} y1={center} x2={center + (radius-40) * Math.cos((hourDeg - 90) * Math.PI/180)} y2={center + (radius-40) * Math.sin((hourDeg - 90) * Math.PI/180)} stroke={`hsl(var(--foreground))`} strokeWidth="3.5" strokeLinecap="round" />
+              <line x1={center} y1={center} x2={center + (radius-20) * Math.cos((minuteDeg - 90) * Math.PI/180)} y2={center + (radius-20) * Math.sin((minuteDeg - 90) * Math.PI/180)} stroke={`hsl(var(--primary))`} strokeWidth="2.5" strokeLinecap="round" />
+              <line x1={center} y1={center} x2={center + (radius-10) * Math.cos((secondDeg - 90) * Math.PI/180)} y2={center + (radius-10) * Math.sin((secondDeg - 90) * Math.PI/180)} stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" />
+              <circle cx={center} cy={center} r="5" fill={`hsl(var(--foreground))`} />
+              <circle cx={center} cy={center} r="2.5" fill="#ef4444" />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="digital-clock-center text-center" style={{ background: 'transparent', textShadow: '0 0 2px rgba(0,0,0,0.2)' }}>
+                {digitalFull}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
-      window.taskManager = new CloudTaskManager();
-      window.ui = new UIManager(taskManager);
-    })();
+    function NextUpAndMissed({ tasksToday, is24Hour }) {
+      const now = getCurrentMinutes();
+      const nextTask = tasksToday.filter(t => !t.completed && t.startTime && timeToMin(t.startTime) > now).sort((a,b) => timeToMin(a.startTime) - timeToMin(b.startTime))[0];
+      const missedTasks = tasksToday.filter(t => !t.completed && t.endTime && timeToMin(t.endTime) <= now && timeToMin(t.endTime) > 0);
+      const [animatingIds, setAnimatingIds] = useState([]);
+      
+      useEffect(() => {
+        const newCompleted = tasksToday.filter(t => t.completed && t.endTime && timeToMin(t.endTime) <= now && timeToMin(t.endTime) > 0);
+        const justCompleted = newCompleted.filter(t => !animatingIds.includes(t.id));
+        if (justCompleted.length) {
+          setAnimatingIds(prev => [...prev, ...justCompleted.map(t => t.id)]);
+          setTimeout(() => {
+            setAnimatingIds(prev => prev.filter(id => !justCompleted.some(t => t.id === id)));
+          }, 250);
+        }
+      }, [tasksToday]);
+      
+      const visibleMissed = missedTasks.filter(t => !animatingIds.includes(t.id));
+      return (
+        <div className="space-y-4">
+          <div className="task-card p-4">
+            <div className="flex items-center gap-2 mb-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={`hsl(var(--primary))`}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><h3 className="text-xs font-semibold uppercase tracking-wide">Next Up</h3></div>
+            {nextTask ? <div><p className="text-sm font-medium">{nextTask.title}</p><span className="inline-block mt-1 text-[11px] font-medium px-2 py-0.5 rounded-md" style={{background:`hsl(var(--primary)/0.1)`, color:`hsl(var(--primary))`}}>{formatRange(nextTask.startTime, nextTask.endTime, is24Hour)}</span></div> : <p className="text-xs opacity-60">All done! 🎉</p>}
+          </div>
+          {visibleMissed.length > 0 && (
+            <div className="task-card p-4">
+              <div className="flex items-center gap-2 mb-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={`hsl(var(--destructive))`}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><h3 className="text-xs font-semibold uppercase tracking-wide">Missed ({missedTasks.length})</h3></div>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {visibleMissed.map(task => (
+                  <div key={task.id} className="rounded-lg p-2" style={{background:`hsl(var(--destructive)/0.05)`, border:`1px solid hsl(var(--destructive)/0.1)`}}>
+                    <p className="text-xs font-medium">{task.title}</p>
+                    <span className="inline-block mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{background:`hsl(var(--destructive)/0.1)`, color:`hsl(var(--destructive)/0.8)`}}>{formatRange(task.startTime, task.endTime, is24Hour)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function TaskCard({ task, onToggle, onDelete, onUpdate, is24Hour, isIdea = false, isSoon = false }) {
+      const [editing, setEditing] = useState(false);
+      const [editTitle, setEditTitle] = useState(task.title);
+      const [editDesc, setEditDesc] = useState(task.description || "");
+      const [editStart, setEditStart] = useState(task.startTime || "08:00");
+      const [editEnd, setEditEnd] = useState(task.endTime || "09:00");
+      const [editDueDate, setEditDueDate] = useState(task.dueDate || "");
+      const textareaRef = useRef(null);
+      
+      const save = () => {
+        const updates = { title: editTitle, description: editDesc };
+        if (!isIdea && !isSoon) { updates.startTime = editStart || null; updates.endTime = editEnd || null; }
+        if (isSoon) { updates.dueDate = editDueDate || null; }
+        onUpdate(updates);
+        setEditing(false);
+      };
+      const handleKeyDown = (e, field) => {
+        if (field === 'title' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(); }
+      };
+      useEffect(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+          textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+        }
+      }, [editDesc]);
+      
+      if (editing) {
+        return (
+          <div className="task-card p-3 animate-scale-in space-y-2">
+            <input className="w-full rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1" style={{background:`hsl(var(--secondary))`}} value={editTitle} onChange={e=>setEditTitle(e.target.value)} onKeyDown={(e)=>handleKeyDown(e,'title')} placeholder={isIdea ? "Idea title" : "Task title"} autoFocus />
+            <textarea ref={textareaRef} className="w-full rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1 auto-expand-textarea" rows="1" style={{background:`hsl(var(--secondary))`}} value={editDesc} onChange={e=>setEditDesc(e.target.value)} onKeyDown={e=>{if(e.key==='Enter' && e.shiftKey){}else if(e.key==='Enter' && !e.shiftKey){e.preventDefault(); save();}}} placeholder="Description" />
+            {!isIdea && !isSoon && (
+              <div className="flex gap-2 items-center">
+                <input type="time" value={editStart} onChange={e=>setEditStart(e.target.value)} className="rounded-lg px-2 py-1 text-sm outline-none" style={{background:`hsl(var(--secondary))`}} />
+                <span className="text-xs">to</span>
+                <input type="time" value={editEnd} onChange={e=>setEditEnd(e.target.value)} className="rounded-lg px-2 py-1 text-sm outline-none" style={{background:`hsl(var(--secondary))`}} />
+              </div>
+            )}
+            {isSoon && (
+              <div className="flex gap-2 items-center">
+                <input type="date" value={editDueDate} onChange={e=>setEditDueDate(e.target.value)} className="rounded-lg px-2 py-1 text-sm outline-none" style={{background:`hsl(var(--secondary))`}} />
+              </div>
+            )}
+            <div className="flex gap-2 justify-end">
+              <button onClick={()=>setEditing(false)} className="px-3 py-1 rounded-lg text-xs" style={{color:`hsl(var(--muted-foreground))`}}>Cancel</button>
+              <button onClick={save} className="px-3 py-1 rounded-lg text-xs" style={{background:`hsl(var(--primary))`, color:`hsl(var(--primary-foreground))`}}>Save</button>
+            </div>
+          </div>
+        );
+      }
+      return (
+        <div className="task-card p-3 animate-fade-in transition-all" style={{opacity: task.completed ? 0.5 : 1}}>
+          <div className="flex items-start gap-2">
+            <button onClick={onToggle} className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all" style={{borderColor: task.completed ? `hsl(var(--accent))` : `hsl(var(--muted-foreground)/0.4)`, background: task.completed ? `hsl(var(--accent))` : 'transparent'}}>
+              {task.completed && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={`hsl(var(--accent-foreground))`} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-medium leading-tight ${task.completed ? 'line-through opacity-60' : ''}`}>{task.title}</p>
+              {task.description && <p className="text-xs opacity-60 mt-0.5 whitespace-pre-wrap">{task.description}</p>}
+              {!isIdea && !isSoon && task.startTime && task.endTime && (
+                <span className="inline-block mt-1 text-[11px] font-medium rounded-md px-2 py-0.5" style={{background:`hsl(var(--primary)/0.1)`, color:`hsl(var(--primary))`}}>{formatRange(task.startTime, task.endTime, is24Hour)}</span>
+              )}
+              {isSoon && task.dueDate && (
+                <span className="inline-block mt-1 text-[11px] font-medium rounded-md px-2 py-0.5" style={{background:`hsl(var(--primary)/0.1)`, color:`hsl(var(--primary))`}}>{formatDateOnly(task.dueDate)}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-0.5">
+              <button onClick={()=>setEditing(true)} className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button onClick={onDelete} className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function AddTaskForm({ column, onAdd, isIdea = false, isSoon = false }) {
+      const [open, setOpen] = useState(false);
+      const [title, setTitle] = useState("");
+      const [desc, setDesc] = useState("");
+      const [startTime, setStartTime] = useState("08:00");
+      const [endTime, setEndTime] = useState("09:00");
+      const [dueDate, setDueDate] = useState("");
+      const textareaRef = useRef(null);
+      
+      useEffect(() => {
+        if (textareaRef.current && open) {
+          textareaRef.current.style.height = 'auto';
+          textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+        }
+      }, [desc, open]);
+      
+      const submit = () => {
+        if (!title.trim()) return;
+        const base = { title: title.trim(), description: desc.trim(), column, completed: false };
+        if (!isIdea && !isSoon) { base.startTime = startTime; base.endTime = endTime; }
+        if (isSoon) { base.dueDate = dueDate; }
+        onAdd(base);
+        setTitle(""); setDesc(""); setStartTime("08:00"); setEndTime("09:00"); setDueDate(""); setOpen(false);
+      };
+      const handleKey = (e, field) => {
+        if (field === 'title' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+      };
+      if (!open) {
+        return (
+          <button onClick={()=>setOpen(true)} className="w-full mt-2 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5 flex items-center justify-center gap-2" style={{border:`1px dashed hsl(var(--border))`, color:`hsl(var(--muted-foreground))`}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            {isIdea ? "+ idea" : "+ task"}
+          </button>
+        );
+      }
+      return (
+        <div className="task-card p-3 animate-scale-in space-y-2 mt-2">
+          <input className="w-full rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1" style={{background:`hsl(var(--secondary))`}} value={title} onChange={e=>setTitle(e.target.value)} onKeyDown={e=>handleKey(e,'title')} placeholder={isIdea ? "Idea title" : "Task title"} autoFocus />
+          <textarea ref={textareaRef} className="w-full rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1 auto-expand-textarea" rows="1" style={{background:`hsl(var(--secondary))`}} value={desc} onChange={e=>setDesc(e.target.value)} onKeyDown={e=>{if(e.key==='Enter' && e.shiftKey){}else if(e.key==='Enter' && !e.shiftKey){e.preventDefault(); submit();}}} placeholder="Description" />
+          {!isIdea && !isSoon && (
+            <div className="flex gap-2 items-center">
+              <input type="time" value={startTime} onChange={e=>setStartTime(e.target.value)} className="rounded-lg px-2 py-1 text-sm outline-none" style={{background:`hsl(var(--secondary))`}} />
+              <span className="text-xs">to</span>
+              <input type="time" value={endTime} onChange={e=>setEndTime(e.target.value)} className="rounded-lg px-2 py-1 text-sm outline-none" style={{background:`hsl(var(--secondary))`}} />
+            </div>
+          )}
+          {isSoon && (
+            <div className="flex gap-2 items-center">
+              <input type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)} className="rounded-lg px-2 py-1 text-sm outline-none" style={{background:`hsl(var(--secondary))`}} />
+            </div>
+          )}
+          <div className="flex gap-2 justify-end">
+            <button onClick={()=>setOpen(false)} className="px-3 py-1 rounded-lg text-xs" style={{color:`hsl(var(--muted-foreground))`}}>Cancel</button>
+            <button onClick={submit} className="px-3 py-1 rounded-lg text-xs" style={{background:`hsl(var(--primary))`, color:`hsl(var(--primary-foreground))`}}>Add</button>
+          </div>
+        </div>
+      );
+    }
+
+    function Column({ column, title, tasks, onAdd, onUpdate, onDelete, onToggle, showCounter, is24Hour, isIdea = false, isSoon = false, collapsed, onToggleCollapse }) {
+      const columnTasks = tasks.filter(t => t.column === column).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+      const completedCount = columnTasks.filter(t => t.completed).length;
+      return (
+        <div className="flex flex-col h-full">
+          <div className="flex justify-between items-center mb-2 pb-1 border-b" style={{borderBottomColor:`hsl(var(--border))`}}>
+            <div className="flex items-center gap-1">
+              <button onClick={onToggleCollapse} className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/5">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  {collapsed ? <polyline points="9 18 15 12 9 6"/> : <polyline points="15 18 9 12 15 6"/>}
+                </svg>
+              </button>
+              <h2 className="text-sm font-bold">{title}</h2>
+            </div>
+            {showCounter && <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-black/5 dark:bg-white/5">{completedCount}/{columnTasks.length}</span>}
+          </div>
+          {!collapsed && (
+            <>
+              <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
+                {columnTasks.length === 0 && <div className="text-center py-5 text-xs opacity-40">No {isIdea ? 'ideas' : 'tasks'}</div>}
+                {columnTasks.map(task => <TaskCard key={task.id} task={task} onToggle={()=>onToggle(task.id, task.completed)} onDelete={()=>onDelete(task.id)} onUpdate={(updates)=>onUpdate(task.id, updates)} is24Hour={is24Hour} isIdea={isIdea} isSoon={isSoon} />)}
+              </div>
+              <AddTaskForm column={column} onAdd={onAdd} isIdea={isIdea} isSoon={isSoon} />
+            </>
+          )}
+        </div>
+      );
+    }
+
+    function UndoToasts({ undoStack, onUndo }) {
+      const radius = 12;
+      const circumference = 2 * Math.PI * radius;
+      return (
+        <div className="fixed bottom-3 right-3 z-50 flex flex-col gap-2 items-end">
+          {undoStack.map(item => {
+            const isIdea = item.task.column === 'newIdeas';
+            const progress = item.remaining / 5;
+            const offset = circumference * (1 - progress);
+            return (
+              <div key={item.task.id} className="undo-toast task-card px-3 py-2 flex items-center gap-3 shadow-sm">
+                <div>
+                  <div className="text-xs font-medium">{item.task.title}</div>
+                  <div className="text-[10px] opacity-70">{isIdea ? 'Idea deleted' : 'Task deleted'}</div>
+                </div>
+                <button onClick={()=>onUndo(item.task)} className="text-xs font-semibold px-1.5 py-0.5 rounded bg-primary/20 hover:bg-primary/30">Undo</button>
+                <div className="relative w-7 h-7">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle cx="14" cy="14" r={radius} fill="none" stroke="hsl(var(--muted-foreground)/0.3)" strokeWidth="2.5" />
+                    <circle cx="14" cy="14" r={radius} fill="none" stroke="hsl(var(--primary))" strokeWidth="2.5" strokeDasharray={circumference} strokeDashoffset={offset} style={{ transition: 'stroke-dashoffset 0.1s linear' }} />
+                  </svg>
+                  <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">{item.remaining}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function SettingsPanel({ isDark, toggleTheme, is24Hour, toggleFormat, autoReset, toggleAutoReset, user, onLogout, onClose }) {
+      return (
+        <div className="fixed inset-0 z-50 flex items-start justify-end p-4">
+          <div className="absolute inset-0 bg-black/20" onClick={onClose}></div>
+          <div className="settings-panel w-64 p-3 relative z-10 animate-scale-in">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-sm font-semibold">Settings</h3>
+              <button onClick={onClose} className="text-lg leading-none">&times;</button>
+            </div>
+            <div className="flex items-center gap-2 mb-4 pb-2 border-b">
+              <img src={user.photoURL || 'https://via.placeholder.com/32'} className="w-8 h-8 rounded-full object-cover" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">{user.displayName || user.email.split('@')[0]}</div>
+                <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center"><span className="text-xs">Dark mode</span><button onClick={toggleTheme} className="text-xs px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 min-w-[52px]">{isDark ? "ON" : "OFF"}</button></div>
+              <div className="flex justify-between items-center"><span className="text-xs">Time format</span><button onClick={toggleFormat} className="text-xs px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 min-w-[52px]">{is24Hour ? "24h" : "12h"}</button></div>
+              <div className="flex justify-between items-center"><span className="text-xs">Auto reset Today</span><button onClick={toggleAutoReset} className="text-xs px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 min-w-[52px]">{autoReset ? "ON" : "OFF"}</button></div>
+              <div className="pt-2 border-t"><button onClick={onLogout} className="w-full text-xs py-1.5 rounded bg-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/30">Logout</button></div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // MAIN APP
+    function App() {
+      const [user, setUser] = useState(null);
+      const [authLoading, setAuthLoading] = useState(true);
+      const [is24Hour, setIs24Hour] = useState(false);
+      const [autoResetToday, setAutoResetToday] = useState(() => localStorage.getItem("autoResetToday") !== "false");
+      const [settingsOpen, setSettingsOpen] = useState(false);
+      const [collapsed, setCollapsed] = useState({ today: false, soon: false, newIdeas: false });
+      const { isDark, toggle: toggleTheme } = useTheme();
+      const { tasks, loading, addTask, updateTask, deleteTask, toggleCompleted, undoStack, undoDelete } = useFirestoreTasks(user, autoResetToday);
+      const [loadingQuote] = useState(timeFacts[Math.floor(Math.random() * timeFacts.length)]);
+
+      useEffect(() => {
+        const unsub = auth.onAuthStateChanged(u => { setUser(u); setAuthLoading(false); });
+        return () => unsub();
+      }, []);
+      useEffect(() => { localStorage.setItem("autoResetToday", autoResetToday); }, [autoResetToday]);
+
+      const login = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+      const logout = () => auth.signOut();
+
+      if (authLoading) return <div className="min-h-screen flex flex-col items-center justify-center p-4"><div className="animate-pulse mb-4"><img src="https://i.ibb.co/wZCzhSfW/2task-manager-favicon.png" className="w-12 h-12" /></div><div className="loading-quote opacity-70">{loadingQuote}</div></div>;
+      if (!user) return (
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="task-card p-6 max-w-md w-full text-center">
+            <img src="https://i.ibb.co/wZCzhSfW/2task-manager-favicon.png" className="w-12 h-12 mx-auto mb-3" />
+            <h2 className="text-xl font-bold mb-1">Time Management</h2>
+            <p className="text-xs opacity-70 mb-5">Organize your day with smart columns & live clock</p>
+            <button onClick={login} className="w-full py-2 rounded-lg flex items-center justify-center gap-2 bg-black/5 dark:bg-white/5 hover:bg-black/10">Sign in with Google</button>
+          </div>
+        </div>
+      );
+
+      const todayTasks = tasks.filter(t => t.column === 'today');
+      
+      const columns = [
+        { key: 'today', title: 'Must have done Today', isIdea: false, isSoon: false, showCounter: true },
+        { key: 'soon', title: 'I will do this soon', isIdea: false, isSoon: true, showCounter: true },
+        { key: 'newIdeas', title: 'New Ideas', isIdea: true, isSoon: false, showCounter: false }
+      ];
+
+      return (
+        <div className="min-h-screen p-4">
+          <div className="max-w-7xl mx-auto">
+            {/* Top bar: settings icon on right */}
+            <div className="flex justify-end mb-4">
+              <button onClick={()=>setSettingsOpen(true)} className="p-2 rounded-md hover:bg-black/5 transition-colors">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Three columns row + right sidebar (clock + next/missed) */}
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Columns grid - takes 2/3 width on large screens */}
+              <div className="flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  {columns.map(col => (
+                    <Column
+                      key={col.key}
+                      column={col.key}
+                      title={col.title}
+                      tasks={tasks}
+                      onAdd={addTask}
+                      onUpdate={updateTask}
+                      onDelete={deleteTask}
+                      onToggle={toggleCompleted}
+                      showCounter={col.showCounter}
+                      is24Hour={is24Hour}
+                      isIdea={col.isIdea}
+                      isSoon={col.isSoon}
+                      collapsed={collapsed[col.key]}
+                      onToggleCollapse={() => setCollapsed(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
+                    />
+                  ))}
+                </div>
+              </div>
+              
+              {/* Right sidebar - fixed width, contains clock and next/missed */}
+              <div className="lg:w-80 flex-shrink-0 space-y-6">
+                <LargeLiveClock tasksToday={todayTasks} is24Hour={is24Hour} />
+                <NextUpAndMissed tasksToday={todayTasks} is24Hour={is24Hour} />
+              </div>
+            </div>
+          </div>
+          <UndoToasts undoStack={undoStack} onUndo={undoDelete} />
+          {settingsOpen && <SettingsPanel isDark={isDark} toggleTheme={toggleTheme} is24Hour={is24Hour} toggleFormat={()=>setIs24Hour(v=>!v)} autoReset={autoResetToday} toggleAutoReset={()=>setAutoResetToday(v=>!v)} user={user} onLogout={logout} onClose={()=>setSettingsOpen(false)} />}
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e1320ad407c2933',t:'MTc3NDMyODU4OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
