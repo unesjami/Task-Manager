@@ -15,12 +15,12 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap');
 
     :root {
       --background: 0 0% 98%;
       --foreground: 220 25% 20%;
       --card-bg: 0 0% 100%;
-      --card-border: 210 20% 85%;
       --primary: 211 85% 52%;
       --primary-foreground: 0 0% 100%;
       --secondary: 210 25% 92%;
@@ -33,12 +33,15 @@
       --destructive-foreground: 0 0% 100%;
       --border: 210 20% 85%;
       --radius: 0.75rem;
+      --today-border: 211 85% 52%;
+      --soon-border: 55 95% 55%;
+      --ideas-border: 145 65% 48%;
+      --missed-border: 0 72% 58%;
     }
     .dark {
       --background: 0 0% 0%;
       --foreground: 210 25% 88%;
-      --card-bg: transparent;
-      --card-border: 211 85% 52%;
+      --card-bg: 0 0% 0%;
       --primary: 211 80% 60%;
       --primary-foreground: 0 0% 100%;
       --secondary: 220 20% 22%;
@@ -50,6 +53,10 @@
       --destructive: 0 60% 50%;
       --destructive-foreground: 0 0% 100%;
       --border: 220 18% 24%;
+      --today-border: 211 80% 60%;
+      --soon-border: 55 90% 60%;
+      --ideas-border: 145 50% 42%;
+      --missed-border: 0 60% 50%;
     }
     * { border-color: hsl(var(--border)); }
     body {
@@ -58,23 +65,65 @@
       font-family: 'Inter', sans-serif;
       font-size: 0.95rem;
       transition: background 0.2s;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
     }
-    .digital-clock-center {
+    #particle-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .app-content {
+      position: relative;
+      z-index: 1;
+    }
+    .large-numerical-clock {
       font-family: 'Orbitron', monospace;
       font-weight: 700;
-      font-size: 1.5rem;
-      letter-spacing: 1px;
+      font-size: 2.5rem;
+      letter-spacing: 4px;
+      line-height: 1.2;
     }
-    .task-card {
+    .small-clock-container {
+      width: 150px;
+      height: 150px;
+    }
+    .task-card-today {
       background: hsl(var(--card-bg));
-      border: 1px solid hsl(var(--card-border));
+      border: 1.5px solid hsl(var(--today-border));
       border-radius: var(--radius);
-      transition: all 0.2s ease;
     }
-    .dark .task-card {
-      background: transparent;
-      border: 1px solid hsl(var(--card-border));
-      box-shadow: none;
+    .task-card-soon {
+      background: hsl(var(--card-bg));
+      border: 1.5px solid hsl(var(--soon-border));
+      border-radius: var(--radius);
+    }
+    .task-card-ideas {
+      background: hsl(var(--card-bg));
+      border: 1.5px solid hsl(var(--ideas-border));
+      border-radius: var(--radius);
+    }
+    .task-card-missed {
+      background: hsl(var(--card-bg));
+      border: 1.5px solid hsl(var(--missed-border));
+      border-radius: var(--radius);
+    }
+    .date-badge-today {
+      background: hsl(var(--today-border) / 0.15);
+      color: hsl(var(--today-border));
+    }
+    .date-badge-soon {
+      background: hsl(var(--soon-border) / 0.15);
+      color: hsl(var(--soon-border));
+    }
+    .date-badge-ideas {
+      background: hsl(var(--ideas-border) / 0.15);
+      color: hsl(var(--ideas-border));
     }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes scaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
@@ -87,7 +136,6 @@
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: hsl(var(--muted)); border-radius: 10px; }
     ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 10px; }
-    .loading-quote { font-weight: 300; font-size: 0.9rem; max-width: 280px; text-align: center; line-height: 1.4; }
     .settings-panel {
       background: hsl(var(--card-bg));
       border: 1px solid hsl(var(--border));
@@ -102,6 +150,41 @@
     .dark .clock-shadow {
       filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
     }
+    .loading-quote {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-weight: 400;
+      line-height: 1.5;
+      max-width: 400px;
+      text-align: center;
+      padding: 1.5rem;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(10px);
+      border-radius: 2rem;
+      color: white;
+      margin-top: 2rem;
+    }
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+    .modal-content {
+      max-height: 90vh;
+      overflow-y: auto;
+      margin: 20px;
+    }
+    .toggle-on { background-color: #10b981; color: white; }
+    .toggle-off { background-color: #6b7280; color: white; }
+    .dark .toggle-off { background-color: #4b5563; }
   </style>
 </head>
 <body>
@@ -163,8 +246,109 @@
       "The trouble is, you think you have time. — Buddha",
       "Yesterday is gone. Tomorrow has not yet come. We have only today. — Mother Teresa",
       "Time flies over us, but leaves its shadow behind. — Nathaniel Hawthorne",
-      "Better three hours too soon than a minute too late. — William Shakespeare"
+      "Better three hours too soon than a minute too late. — William Shakespeare",
+      "Time is what we want most, but what we use worst. — William Penn",
+      "The future is something which everyone reaches at the rate of sixty minutes an hour. — C.S. Lewis",
+      "Time = life; therefore, waste your time and waste your life. — Richard Cecil",
+      "The bad news is time flies. The good news is you're the pilot. — Michael Altshuler",
+      "Time is more valuable than money. You can get more money, but you cannot get more time. — Jim Rohn",
+      "The two most powerful warriors are patience and time. — Leo Tolstoy",
+      "Time brings all things to pass. — Aeschylus",
+      "Time is a created thing. To say 'I don't have time' is to say 'I don't want to'. — Lao Tzu",
+      "They always say time changes things, but you actually have to change them yourself. — Andy Warhol",
+      "Time is a great teacher, but unfortunately it kills all its pupils. — Hector Berlioz",
+      "One day, you will wake up and there won't be any more time to do the things you've always wanted. — Paulo Coelho",
+      "Time is the longest distance between two places. — Tennessee Williams",
+      "The only reason for time is so that everything doesn't happen at once. — Albert Einstein",
+      "Time is a sort of river of passing events, and strong is its current. — Marcus Aurelius",
+      "Don't watch the clock; do what it does. Keep going. — Sam Levenson",
+      "Time is free, but it's priceless. You can't own it, but you can use it. — Harvey Mackay",
+      "The best time to plant a tree was 20 years ago. The second best time is now. — Chinese Proverb",
+      "Time decides who you meet in life, your heart decides who you want in your life, and your behavior decides who stays. — Unknown"
     ];
+
+    // ---------- PARTICLE BACKGROUND (no blur) ----------
+    let particleAnimationId = null;
+    let particleCtx = null;
+    let particleCanvas = null;
+    let particlesArray = [];
+    let particleWidth = 0, particleHeight = 0;
+
+    function initParticleCanvas() {
+      const canvas = document.getElementById('particle-canvas');
+      if (!canvas) return;
+      particleCanvas = canvas;
+      particleCtx = canvas.getContext('2d');
+      
+      function resizeCanvas() {
+        particleWidth = window.innerWidth;
+        particleHeight = window.innerHeight;
+        canvas.width = particleWidth;
+        canvas.height = particleHeight;
+      }
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+      
+      const PARTICLE_COUNT = 40;
+      particlesArray = [];
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particlesArray.push({
+          x: Math.random() * particleWidth,
+          y: Math.random() * particleHeight,
+          radius: Math.random() * 5 + 2,
+          speedX: (Math.random() - 0.5) * 0.25,
+          speedY: (Math.random() - 0.5) * 0.25,
+          color: `rgba(0, 234, 255, ${Math.random() * 0.5 + 0.3})`
+        });
+      }
+      
+      function draw() {
+        if (!particleCtx) return;
+        particleCtx.clearRect(0, 0, particleWidth, particleHeight);
+        for (let i = 0; i < particlesArray.length; i++) {
+          for (let j = i + 1; j < particlesArray.length; j++) {
+            const dx = particlesArray[i].x - particlesArray[j].x;
+            const dy = particlesArray[i].y - particlesArray[j].y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < 180) {
+              particleCtx.strokeStyle = `rgba(0, 234, 255, ${0.5 * (1 - dist/180)})`;
+              particleCtx.lineWidth = 1.5;
+              particleCtx.beginPath();
+              particleCtx.moveTo(particlesArray[i].x, particlesArray[i].y);
+              particleCtx.lineTo(particlesArray[j].x, particlesArray[j].y);
+              particleCtx.stroke();
+            }
+          }
+        }
+        for (let p of particlesArray) {
+          particleCtx.beginPath();
+          particleCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          particleCtx.fillStyle = p.color;
+          particleCtx.fill();
+          p.x += p.speedX;
+          p.y += p.speedY;
+          if (p.x < 0) p.x = particleWidth;
+          if (p.x > particleWidth) p.x = 0;
+          if (p.y < 0) p.y = particleHeight;
+          if (p.y > particleHeight) p.y = 0;
+        }
+        particleAnimationId = requestAnimationFrame(draw);
+      }
+      draw();
+    }
+    
+    function destroyParticleCanvas() {
+      if (particleAnimationId) {
+        cancelAnimationFrame(particleAnimationId);
+        particleAnimationId = null;
+      }
+      const canvas = document.getElementById('particle-canvas');
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      particlesArray = [];
+    }
 
     // ---------- HOOKS ----------
     function useTheme() {
@@ -186,19 +370,27 @@
       // Daily reset for "today" column
       useEffect(() => {
         if (!user || !autoResetToday) return;
-        const checkAndReset = async () => {
+        const performReset = async () => {
           const lastReset = localStorage.getItem(`lastReset_${user.uid}`);
           const today = getTodayDate();
           if (lastReset !== today) {
-            const todayTasks = tasks.filter(t => t.column === 'today' && t.completed === true);
-            for (const task of todayTasks) {
-              await db.collection('users').doc(user.uid).collection('tasks').doc(task.id).update({ completed: false });
-            }
+            const todayTasksRef = db.collection('users').doc(user.uid).collection('tasks');
+            const snapshot = await todayTasksRef.where('column', '==', 'today').where('completed', '==', true).get();
+            const batch = db.batch();
+            snapshot.forEach(doc => batch.update(doc.ref, { completed: false }));
+            await batch.commit();
             localStorage.setItem(`lastReset_${user.uid}`, today);
+            const newSnapshot = await todayTasksRef.get();
+            const updatedTasks = [];
+            newSnapshot.forEach(doc => updatedTasks.push({ id: doc.id, ...doc.data() }));
+            setTasks(prev => {
+              const otherTasks = prev.filter(t => t.column !== 'today');
+              return [...otherTasks, ...updatedTasks];
+            });
           }
         };
-        checkAndReset();
-      }, [user, tasks, autoResetToday]);
+        performReset();
+      }, [user, autoResetToday]);
 
       useEffect(() => {
         if (!user) { setTasks([]); setLoading(false); return; }
@@ -215,9 +407,8 @@
 
       const addTask = useCallback(async (data) => {
         if (!user) return;
-        // For "New Ideas" column we always use column = 'newIdeas' (not 'future')
-        const finalData = { ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp(), completed: false };
-        await db.collection('users').doc(user.uid).collection('tasks').add(finalData);
+        const newTask = { ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp(), completed: false };
+        await db.collection('users').doc(user.uid).collection('tasks').add(newTask);
       }, [user]);
 
       const updateTask = useCallback(async (id, updates) => {
@@ -260,7 +451,7 @@
     }
 
     // ---------- COMPONENTS ----------
-    function LargeLiveClock({ tasksToday, is24Hour }) {
+    function SmallCircleClock({ tasksToday, is24Hour }) {
       const [currentTime, setCurrentTime] = useState(new Date());
       useEffect(() => {
         const interval = setInterval(() => setCurrentTime(new Date()), 100);
@@ -273,18 +464,7 @@
       const minuteDeg = (minutes / 60) * 360 + (seconds / 60) * 6;
       const secondDeg = (seconds / 60) * 360;
       
-      let digitalHours = hours;
-      let digitalPeriod = '';
-      if (!is24Hour) {
-        digitalPeriod = hours >= 12 ? 'PM' : 'AM';
-        digitalHours = hours % 12 || 12;
-      }
-      const digitalTimeStr = is24Hour 
-        ? `${digitalHours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}`
-        : `${digitalHours}:${minutes.toString().padStart(2,'0')}`;
-      const digitalFull = is24Hour ? digitalTimeStr : `${digitalTimeStr} ${digitalPeriod}`;
-      
-      const size = 240;
+      const size = 150;
       const center = size/2;
       const radius = size * 0.42;
       
@@ -298,40 +478,59 @@
       });
       
       return (
-        <div className="flex justify-center">
-          <div className="relative clock-shadow" style={{ width: size, height: size }}>
-            <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full">
-              <circle cx={center} cy={center} r={radius+5} fill="none" stroke={`hsl(var(--border))`} strokeWidth="1.5" opacity="0.3" />
-              {[...Array(12)].map((_, i) => {
-                const angle = (i * 30 - 90) * Math.PI / 180;
-                const x1 = center + (radius-8) * Math.cos(angle);
-                const y1 = center + (radius-8) * Math.sin(angle);
-                const x2 = center + (radius+2) * Math.cos(angle);
-                const y2 = center + (radius+2) * Math.sin(angle);
-                return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={`hsl(var(--foreground))`} strokeWidth="2" opacity="0.6" />;
-              })}
-              {taskArcs.map((arc, idx) => {
-                const startRad = (arc.startDeg - 90) * Math.PI / 180;
-                const endRad = (arc.endDeg - 90) * Math.PI / 180;
-                const rArc = radius - 8;
-                const x1 = center + rArc * Math.cos(startRad);
-                const y1 = center + rArc * Math.sin(startRad);
-                const x2 = center + rArc * Math.cos(endRad);
-                const y2 = center + rArc * Math.sin(endRad);
-                const large = arc.endDeg - arc.startDeg > 180 ? 1 : 0;
-                return <path key={idx} d={`M ${x1} ${y1} A ${rArc} ${rArc} 0 ${large} 1 ${x2} ${y2}`} stroke={arc.color} strokeWidth="5" fill="none" opacity="0.4" />;
-              })}
-              <line x1={center} y1={center} x2={center + (radius-40) * Math.cos((hourDeg - 90) * Math.PI/180)} y2={center + (radius-40) * Math.sin((hourDeg - 90) * Math.PI/180)} stroke={`hsl(var(--foreground))`} strokeWidth="3.5" strokeLinecap="round" />
-              <line x1={center} y1={center} x2={center + (radius-20) * Math.cos((minuteDeg - 90) * Math.PI/180)} y2={center + (radius-20) * Math.sin((minuteDeg - 90) * Math.PI/180)} stroke={`hsl(var(--primary))`} strokeWidth="2.5" strokeLinecap="round" />
-              <line x1={center} y1={center} x2={center + (radius-10) * Math.cos((secondDeg - 90) * Math.PI/180)} y2={center + (radius-10) * Math.sin((secondDeg - 90) * Math.PI/180)} stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" />
-              <circle cx={center} cy={center} r="5" fill={`hsl(var(--foreground))`} />
-              <circle cx={center} cy={center} r="2.5" fill="#ef4444" />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="digital-clock-center text-center" style={{ background: 'transparent', textShadow: '0 0 2px rgba(0,0,0,0.2)' }}>
-                {digitalFull}
-              </div>
-            </div>
+        <div className="small-clock-container relative clock-shadow">
+          <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full">
+            <circle cx={center} cy={center} r={radius+5} fill="none" stroke={`hsl(var(--border))`} strokeWidth="1.5" opacity="0.3" />
+            {[...Array(12)].map((_, i) => {
+              const angle = (i * 30 - 90) * Math.PI / 180;
+              const x1 = center + (radius-8) * Math.cos(angle);
+              const y1 = center + (radius-8) * Math.sin(angle);
+              const x2 = center + (radius+2) * Math.cos(angle);
+              const y2 = center + (radius+2) * Math.sin(angle);
+              return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={`hsl(var(--foreground))`} strokeWidth="1.5" opacity="0.6" />;
+            })}
+            {taskArcs.map((arc, idx) => {
+              const startRad = (arc.startDeg - 90) * Math.PI / 180;
+              const endRad = (arc.endDeg - 90) * Math.PI / 180;
+              const rArc = radius - 8;
+              const x1 = center + rArc * Math.cos(startRad);
+              const y1 = center + rArc * Math.sin(startRad);
+              const x2 = center + rArc * Math.cos(endRad);
+              const y2 = center + rArc * Math.sin(endRad);
+              const large = arc.endDeg - arc.startDeg > 180 ? 1 : 0;
+              return <path key={idx} d={`M ${x1} ${y1} A ${rArc} ${rArc} 0 ${large} 1 ${x2} ${y2}`} stroke={arc.color} strokeWidth="3" fill="none" opacity="0.4" />;
+            })}
+            <line x1={center} y1={center} x2={center + (radius-28) * Math.cos((hourDeg - 90) * Math.PI/180)} y2={center + (radius-28) * Math.sin((hourDeg - 90) * Math.PI/180)} stroke={`hsl(var(--foreground))`} strokeWidth="2.5" strokeLinecap="round" />
+            <line x1={center} y1={center} x2={center + (radius-15) * Math.cos((minuteDeg - 90) * Math.PI/180)} y2={center + (radius-15) * Math.sin((minuteDeg - 90) * Math.PI/180)} stroke={`hsl(var(--primary))`} strokeWidth="1.8" strokeLinecap="round" />
+            <line x1={center} y1={center} x2={center + (radius-6) * Math.cos((secondDeg - 90) * Math.PI/180)} y2={center + (radius-6) * Math.sin((secondDeg - 90) * Math.PI/180)} stroke="#ef4444" strokeWidth="1" strokeLinecap="round" />
+            <circle cx={center} cy={center} r="3.5" fill={`hsl(var(--foreground))`} />
+            <circle cx={center} cy={center} r="1.5" fill="#ef4444" />
+          </svg>
+        </div>
+      );
+    }
+
+    function LargeNumericalClock({ is24Hour }) {
+      const [currentTime, setCurrentTime] = useState(new Date());
+      useEffect(() => {
+        const interval = setInterval(() => setCurrentTime(new Date()), 100);
+        return () => clearInterval(interval);
+      }, []);
+      let hours = currentTime.getHours();
+      const minutes = currentTime.getMinutes().toString().padStart(2, '0');
+      const hoursStr = hours.toString().padStart(2, '0');
+      const dateStr = currentTime.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      let ampm = '';
+      if (!is24Hour) {
+        ampm = hours >= 12 ? 'PM' : 'AM';
+      }
+      const displayTime = is24Hour ? `${hoursStr}:${minutes}` : `${(hours % 12 || 12).toString().padStart(2, '0')}:${minutes}`;
+      return (
+        <div>
+          <div className="large-numerical-clock">{displayTime}</div>
+          <div className="flex justify-between items-center mt-1 text-xs text-muted-foreground">
+            <span>{dateStr}</span>
+            {!is24Hour && <span className="ml-2">{ampm}</span>}
           </div>
         </div>
       );
@@ -357,12 +556,12 @@
       const visibleMissed = missedTasks.filter(t => !animatingIds.includes(t.id));
       return (
         <div className="space-y-4">
-          <div className="task-card p-4">
+          <div className="task-card-today p-4">
             <div className="flex items-center gap-2 mb-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={`hsl(var(--primary))`}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><h3 className="text-xs font-semibold uppercase tracking-wide">Next Up</h3></div>
             {nextTask ? <div><p className="text-sm font-medium">{nextTask.title}</p><span className="inline-block mt-1 text-[11px] font-medium px-2 py-0.5 rounded-md" style={{background:`hsl(var(--primary)/0.1)`, color:`hsl(var(--primary))`}}>{formatRange(nextTask.startTime, nextTask.endTime, is24Hour)}</span></div> : <p className="text-xs opacity-60">All done! 🎉</p>}
           </div>
           {visibleMissed.length > 0 && (
-            <div className="task-card p-4">
+            <div className="task-card-missed p-4">
               <div className="flex items-center gap-2 mb-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={`hsl(var(--destructive))`}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><h3 className="text-xs font-semibold uppercase tracking-wide">Missed ({missedTasks.length})</h3></div>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {visibleMissed.map(task => (
@@ -378,7 +577,7 @@
       );
     }
 
-    function TaskCard({ task, onToggle, onDelete, onUpdate, is24Hour, isIdea = false, isSoon = false }) {
+    function TaskCard({ task, onToggle, onDelete, onUpdate, is24Hour, isIdea = false, isSoon = false, columnType }) {
       const [editing, setEditing] = useState(false);
       const [editTitle, setEditTitle] = useState(task.title);
       const [editDesc, setEditDesc] = useState(task.description || "");
@@ -386,6 +585,9 @@
       const [editEnd, setEditEnd] = useState(task.endTime || "09:00");
       const [editDueDate, setEditDueDate] = useState(task.dueDate || "");
       const textareaRef = useRef(null);
+      
+      const cardClass = columnType === 'today' ? 'task-card-today' : (columnType === 'soon' ? 'task-card-soon' : 'task-card-ideas');
+      const dateBadgeClass = columnType === 'today' ? 'date-badge-today' : (columnType === 'soon' ? 'date-badge-soon' : 'date-badge-ideas');
       
       const save = () => {
         const updates = { title: editTitle, description: editDesc };
@@ -406,7 +608,7 @@
       
       if (editing) {
         return (
-          <div className="task-card p-3 animate-scale-in space-y-2">
+          <div className={`${cardClass} p-3 animate-scale-in space-y-2`}>
             <input className="w-full rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1" style={{background:`hsl(var(--secondary))`}} value={editTitle} onChange={e=>setEditTitle(e.target.value)} onKeyDown={(e)=>handleKeyDown(e,'title')} placeholder={isIdea ? "Idea title" : "Task title"} autoFocus />
             <textarea ref={textareaRef} className="w-full rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1 auto-expand-textarea" rows="1" style={{background:`hsl(var(--secondary))`}} value={editDesc} onChange={e=>setEditDesc(e.target.value)} onKeyDown={e=>{if(e.key==='Enter' && e.shiftKey){}else if(e.key==='Enter' && !e.shiftKey){e.preventDefault(); save();}}} placeholder="Description" />
             {!isIdea && !isSoon && (
@@ -429,7 +631,7 @@
         );
       }
       return (
-        <div className="task-card p-3 animate-fade-in transition-all" style={{opacity: task.completed ? 0.5 : 1}}>
+        <div className={`${cardClass} p-3 animate-fade-in transition-all`} style={{opacity: task.completed ? 0.5 : 1}}>
           <div className="flex items-start gap-2">
             <button onClick={onToggle} className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all" style={{borderColor: task.completed ? `hsl(var(--accent))` : `hsl(var(--muted-foreground)/0.4)`, background: task.completed ? `hsl(var(--accent))` : 'transparent'}}>
               {task.completed && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={`hsl(var(--accent-foreground))`} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
@@ -441,7 +643,7 @@
                 <span className="inline-block mt-1 text-[11px] font-medium rounded-md px-2 py-0.5" style={{background:`hsl(var(--primary)/0.1)`, color:`hsl(var(--primary))`}}>{formatRange(task.startTime, task.endTime, is24Hour)}</span>
               )}
               {isSoon && task.dueDate && (
-                <span className="inline-block mt-1 text-[11px] font-medium rounded-md px-2 py-0.5" style={{background:`hsl(var(--primary)/0.1)`, color:`hsl(var(--primary))`}}>{formatDateOnly(task.dueDate)}</span>
+                <span className={`inline-block mt-1 text-[11px] font-medium rounded-md px-2 py-0.5 ${dateBadgeClass}`}>{formatDateOnly(task.dueDate)}</span>
               )}
             </div>
             <div className="flex items-center gap-0.5">
@@ -482,38 +684,41 @@
       };
       if (!open) {
         return (
-          <button onClick={()=>setOpen(true)} className="w-full mt-2 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5 flex items-center justify-center gap-2" style={{border:`1px dashed hsl(var(--border))`, color:`hsl(var(--muted-foreground))`}}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            {isIdea ? "+ idea" : "+ task"}
+          <button onClick={()=>setOpen(true)} className="w-full mt-2 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5" style={{border:`1px dashed hsl(var(--border))`, color:`hsl(var(--muted-foreground))`}}>
+            {isIdea ? "+ Idea" : "+ task"}
           </button>
         );
       }
       return (
-        <div className="task-card p-3 animate-scale-in space-y-2 mt-2">
-          <input className="w-full rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1" style={{background:`hsl(var(--secondary))`}} value={title} onChange={e=>setTitle(e.target.value)} onKeyDown={e=>handleKey(e,'title')} placeholder={isIdea ? "Idea title" : "Task title"} autoFocus />
-          <textarea ref={textareaRef} className="w-full rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1 auto-expand-textarea" rows="1" style={{background:`hsl(var(--secondary))`}} value={desc} onChange={e=>setDesc(e.target.value)} onKeyDown={e=>{if(e.key==='Enter' && e.shiftKey){}else if(e.key==='Enter' && !e.shiftKey){e.preventDefault(); submit();}}} placeholder="Description" />
-          {!isIdea && !isSoon && (
-            <div className="flex gap-2 items-center">
-              <input type="time" value={startTime} onChange={e=>setStartTime(e.target.value)} className="rounded-lg px-2 py-1 text-sm outline-none" style={{background:`hsl(var(--secondary))`}} />
-              <span className="text-xs">to</span>
-              <input type="time" value={endTime} onChange={e=>setEndTime(e.target.value)} className="rounded-lg px-2 py-1 text-sm outline-none" style={{background:`hsl(var(--secondary))`}} />
+        <div className="modal-overlay" onClick={()=>setOpen(false)}>
+          <div className="modal-content w-full max-w-sm" onClick={(e)=>e.stopPropagation()}>
+            <div className="task-card-today p-4 animate-scale-in space-y-3">
+              <h3 className="font-semibold text-sm">{isIdea ? "Add New Idea" : "Add New Task"}</h3>
+              <input className="w-full rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1" style={{background:`hsl(var(--secondary))`}} value={title} onChange={e=>setTitle(e.target.value)} onKeyDown={e=>handleKey(e,'title')} placeholder={isIdea ? "Idea title" : "Task title"} autoFocus />
+              <textarea ref={textareaRef} className="w-full rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1 auto-expand-textarea" rows="1" style={{background:`hsl(var(--secondary))`}} value={desc} onChange={e=>setDesc(e.target.value)} onKeyDown={e=>{if(e.key==='Enter' && e.shiftKey){}else if(e.key==='Enter' && !e.shiftKey){e.preventDefault(); submit();}}} placeholder="Description" />
+              {!isIdea && !isSoon && (
+                <div className="flex gap-2 items-center">
+                  <input type="time" value={startTime} onChange={e=>setStartTime(e.target.value)} className="rounded-lg px-2 py-1 text-sm outline-none" style={{background:`hsl(var(--secondary))`}} />
+                  <span className="text-xs">to</span>
+                  <input type="time" value={endTime} onChange={e=>setEndTime(e.target.value)} className="rounded-lg px-2 py-1 text-sm outline-none" style={{background:`hsl(var(--secondary))`}} />
+                </div>
+              )}
+              {isSoon && (
+                <div className="flex gap-2 items-center">
+                  <input type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)} className="rounded-lg px-2 py-1 text-sm outline-none" style={{background:`hsl(var(--secondary))`}} />
+                </div>
+              )}
+              <div className="flex gap-2 justify-end">
+                <button onClick={()=>setOpen(false)} className="px-3 py-1 rounded-lg text-xs" style={{color:`hsl(var(--muted-foreground))`}}>Cancel</button>
+                <button onClick={submit} className="px-3 py-1 rounded-lg text-xs" style={{background:`hsl(var(--primary))`, color:`hsl(var(--primary-foreground))`}}>Add</button>
+              </div>
             </div>
-          )}
-          {isSoon && (
-            <div className="flex gap-2 items-center">
-              <input type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)} className="rounded-lg px-2 py-1 text-sm outline-none" style={{background:`hsl(var(--secondary))`}} />
-            </div>
-          )}
-          <div className="flex gap-2 justify-end">
-            <button onClick={()=>setOpen(false)} className="px-3 py-1 rounded-lg text-xs" style={{color:`hsl(var(--muted-foreground))`}}>Cancel</button>
-            <button onClick={submit} className="px-3 py-1 rounded-lg text-xs" style={{background:`hsl(var(--primary))`, color:`hsl(var(--primary-foreground))`}}>Add</button>
           </div>
         </div>
       );
     }
 
     function Column({ column, title, tasks, onAdd, onUpdate, onDelete, onToggle, showCounter, is24Hour, isIdea = false, isSoon = false, collapsed, onToggleCollapse }) {
-      // For "New Ideas" column, we include both 'newIdeas' and legacy 'future'
       const columnTasks = tasks.filter(t => {
         if (column === 'newIdeas') {
           return t.column === 'newIdeas' || t.column === 'future';
@@ -521,6 +726,7 @@
         return t.column === column;
       }).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
       const completedCount = columnTasks.filter(t => t.completed).length;
+      const cardType = column === 'today' ? 'today' : (column === 'soon' ? 'soon' : 'ideas');
       return (
         <div className="flex flex-col h-full">
           <div className="flex justify-between items-center mb-2 pb-1 border-b" style={{borderBottomColor:`hsl(var(--border))`}}>
@@ -538,7 +744,7 @@
             <>
               <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
                 {columnTasks.length === 0 && <div className="text-center py-5 text-xs opacity-40">No {isIdea ? 'ideas' : 'tasks'}</div>}
-                {columnTasks.map(task => <TaskCard key={task.id} task={task} onToggle={()=>onToggle(task.id, task.completed)} onDelete={()=>onDelete(task.id)} onUpdate={(updates)=>onUpdate(task.id, updates)} is24Hour={is24Hour} isIdea={isIdea} isSoon={isSoon} />)}
+                {columnTasks.map(task => <TaskCard key={task.id} task={task} onToggle={()=>onToggle(task.id, task.completed)} onDelete={()=>onDelete(task.id)} onUpdate={(updates)=>onUpdate(task.id, updates)} is24Hour={is24Hour} isIdea={isIdea} isSoon={isSoon} columnType={cardType} />)}
               </div>
               <AddTaskForm column={column === 'newIdeas' ? 'newIdeas' : column} onAdd={onAdd} isIdea={isIdea} isSoon={isSoon} />
             </>
@@ -557,7 +763,7 @@
             const progress = item.remaining / 5;
             const offset = circumference * (1 - progress);
             return (
-              <div key={item.task.id} className="undo-toast task-card px-3 py-2 flex items-center gap-3 shadow-sm">
+              <div key={item.task.id} className="undo-toast task-card-today px-3 py-2 flex items-center gap-3 shadow-sm">
                 <div>
                   <div className="text-xs font-medium">{item.task.title}</div>
                   <div className="text-[10px] opacity-70">{isIdea ? 'Idea deleted' : 'Task deleted'}</div>
@@ -577,7 +783,7 @@
       );
     }
 
-    function SettingsPanel({ isDark, toggleTheme, is24Hour, toggleFormat, autoReset, toggleAutoReset, user, onLogout, onClose }) {
+    function SettingsPanel({ isDark, toggleTheme, is24Hour, toggleFormat, autoReset, toggleAutoReset, focusBgEnabled, toggleFocusBg, user, onLogout, onClose }) {
       return (
         <div className="fixed inset-0 z-50 flex items-start justify-end p-4">
           <div className="absolute inset-0 bg-black/20" onClick={onClose}></div>
@@ -594,9 +800,10 @@
               </div>
             </div>
             <div className="space-y-3">
-              <div className="flex justify-between items-center"><span className="text-xs">Dark mode</span><button onClick={toggleTheme} className="text-xs px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 min-w-[52px]">{isDark ? "ON" : "OFF"}</button></div>
-              <div className="flex justify-between items-center"><span className="text-xs">Time format</span><button onClick={toggleFormat} className="text-xs px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 min-w-[52px]">{is24Hour ? "24h" : "12h"}</button></div>
-              <div className="flex justify-between items-center"><span className="text-xs">Auto reset Today</span><button onClick={toggleAutoReset} className="text-xs px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 min-w-[52px]">{autoReset ? "ON" : "OFF"}</button></div>
+              <div className="flex justify-between items-center"><span className="text-xs">Dark mode</span><button onClick={toggleTheme} className={`text-xs px-2 py-0.5 rounded-full min-w-[52px] ${isDark ? 'toggle-on' : 'toggle-off'}`}>{isDark ? "ON" : "OFF"}</button></div>
+              <div className="flex justify-between items-center"><span className="text-xs">Time format</span><button onClick={toggleFormat} className={`text-xs px-2 py-0.5 rounded-full min-w-[52px] ${is24Hour ? 'toggle-on' : 'toggle-off'}`}>{is24Hour ? "24h" : "12h"}</button></div>
+              <div className="flex justify-between items-center"><span className="text-xs">Auto reset Today</span><button onClick={toggleAutoReset} className={`text-xs px-2 py-0.5 rounded-full min-w-[52px] ${autoReset ? 'toggle-on' : 'toggle-off'}`}>{autoReset ? "ON" : "OFF"}</button></div>
+              <div className="flex justify-between items-center"><span className="text-xs">Focus background</span><button onClick={toggleFocusBg} className={`text-xs px-2 py-0.5 rounded-full min-w-[52px] ${focusBgEnabled ? 'toggle-on' : 'toggle-off'}`}>{focusBgEnabled ? "ON" : "OFF"}</button></div>
               <div className="pt-2 border-t"><button onClick={onLogout} className="w-full text-xs py-1.5 rounded bg-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/30">Logout</button></div>
             </div>
           </div>
@@ -610,11 +817,30 @@
       const [authLoading, setAuthLoading] = useState(true);
       const [is24Hour, setIs24Hour] = useState(false);
       const [autoResetToday, setAutoResetToday] = useState(() => localStorage.getItem("autoResetToday") !== "false");
+      // Main page: Focus background default ON
+      const [focusBgEnabled, setFocusBgEnabled] = useState(() => {
+        const stored = localStorage.getItem("focusBgEnabled");
+        return stored === null ? true : stored === "true";
+      });
       const [settingsOpen, setSettingsOpen] = useState(false);
       const [collapsed, setCollapsed] = useState({ today: false, soon: false, newIdeas: false });
       const { isDark, toggle: toggleTheme } = useTheme();
       const { tasks, loading, addTask, updateTask, deleteTask, toggleCompleted, undoStack, undoDelete } = useFirestoreTasks(user, autoResetToday);
-      const [loadingQuote] = useState(timeFacts[Math.floor(Math.random() * timeFacts.length)]);
+      const [loadingQuote] = useState(() => timeFacts[Math.floor(Math.random() * timeFacts.length)]);
+
+      // Control particles on main page based on toggle
+      useEffect(() => {
+        if (focusBgEnabled) {
+          initParticleCanvas();
+        } else {
+          destroyParticleCanvas();
+        }
+        return () => destroyParticleCanvas();
+      }, [focusBgEnabled]);
+
+      useEffect(() => {
+        localStorage.setItem("focusBgEnabled", focusBgEnabled);
+      }, [focusBgEnabled]);
 
       useEffect(() => {
         const unsub = auth.onAuthStateChanged(u => { setUser(u); setAuthLoading(false); });
@@ -625,17 +851,56 @@
       const login = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
       const logout = () => auth.signOut();
 
-      if (authLoading) return <div className="min-h-screen flex flex-col items-center justify-center p-4"><div className="animate-pulse mb-4"><img src="https://i.ibb.co/wZCzhSfW/2task-manager-favicon.png" className="w-12 h-12" /></div><div className="loading-quote opacity-70">{loadingQuote}</div></div>;
-      if (!user) return (
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <div className="task-card p-6 max-w-md w-full text-center">
-            <img src="https://i.ibb.co/wZCzhSfW/2task-manager-favicon.png" className="w-12 h-12 mx-auto mb-3" />
-            <h2 className="text-xl font-bold mb-1">Time Management</h2>
-            <p className="text-xs opacity-70 mb-5">Organize your day with smart columns & live clock</p>
-            <button onClick={login} className="w-full py-2 rounded-lg flex items-center justify-center gap-2 bg-black/5 dark:bg-white/5 hover:bg-black/10">Sign in with Google</button>
+      if (authLoading) {
+        return (
+          <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #0f2027, #203a43, #2c5364)' }}>
+            <canvas id="particle-canvas" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }}></canvas>
+            <div className="relative z-10 animate-pulse mb-6">
+              <img src="https://i.ibb.co/wZCzhSfW/2task-manager-favicon.png" className="w-16 h-16 rounded-full shadow-lg" />
+            </div>
+            <div className="relative z-10 loading-quote">{loadingQuote}</div>
+            <div className="relative z-10 mt-6 text-xs opacity-70">loading your workspace...</div>
           </div>
-        </div>
-      );
+        );
+      }
+      if (!user) {
+        // Sign-in page: always show particles (Focus background ON)
+        // Ensure particles are running
+        setTimeout(() => {
+          const canvas = document.getElementById('particle-canvas');
+          if (canvas && !particleAnimationId) {
+            initParticleCanvas();
+          }
+        }, 0);
+        return (
+          <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #0f2027, #203a43, #2c5364)' }}>
+            <canvas id="particle-canvas" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }}></canvas>
+            <div className="relative z-10 task-card-today p-6 max-w-md w-full text-center">
+              <img src="https://i.ibb.co/wZCzhSfW/2task-manager-favicon.png" className="w-12 h-12 mx-auto mb-3" />
+              <h2 className="text-xl font-bold mb-1">Time Management</h2>
+              <p className="text-xs opacity-70 mb-5">Organize your day with smart columns & live clock</p>
+              <button onClick={login} className="w-full py-2 rounded-lg flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 transition-colors border border-white/30">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+                <span>Continue with Google</span>
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      // After sign-in, show loading while tasks are fetched
+      if (loading) {
+        return (
+          <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #0f2027, #203a43, #2c5364)' }}>
+            <canvas id="particle-canvas" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }}></canvas>
+            <div className="relative z-10 animate-pulse mb-6">
+              <img src="https://i.ibb.co/wZCzhSfW/2task-manager-favicon.png" className="w-16 h-16 rounded-full shadow-lg" />
+            </div>
+            <div className="relative z-10 loading-quote">{loadingQuote}</div>
+            <div className="relative z-10 mt-6 text-xs opacity-70">loading your data...</div>
+          </div>
+        );
+      }
 
       const todayTasks = tasks.filter(t => t.column === 'today');
       
@@ -646,50 +911,60 @@
       ];
 
       return (
-        <div className="min-h-screen p-4">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex justify-end mb-4">
-              <button onClick={()=>setSettingsOpen(true)} className="p-2 rounded-md hover:bg-black/5 transition-colors">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <circle cx="12" cy="12" r="3"/>
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex flex-col lg:flex-row gap-6">
-              <div className="flex-1">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  {columns.map(col => (
-                    <Column
-                      key={col.key}
-                      column={col.key}
-                      title={col.title}
-                      tasks={tasks}
-                      onAdd={addTask}
-                      onUpdate={updateTask}
-                      onDelete={deleteTask}
-                      onToggle={toggleCompleted}
-                      showCounter={col.showCounter}
-                      is24Hour={is24Hour}
-                      isIdea={col.isIdea}
-                      isSoon={col.isSoon}
-                      collapsed={collapsed[col.key]}
-                      onToggleCollapse={() => setCollapsed(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
-                    />
-                  ))}
+        <>
+          <canvas id="particle-canvas"></canvas>
+          <div className="app-content min-h-screen p-4">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex justify-between items-center mb-4">
+                <div></div>
+                <div className="flex items-center gap-4">
+                  <span className="text-xs font-bold tracking-wider text-muted-foreground">TIME MANAGEMENT</span>
+                  <button onClick={()=>setSettingsOpen(true)} className="p-2 rounded-md hover:bg-black/5 transition-colors">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <circle cx="12" cy="12" r="3"/>
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                  </button>
                 </div>
               </div>
-              
-              <div className="lg:w-80 flex-shrink-0 space-y-6">
-                <LargeLiveClock tasksToday={todayTasks} is24Hour={is24Hour} />
-                <NextUpAndMissed tasksToday={todayTasks} is24Hour={is24Hour} />
+
+              <div className="flex flex-col lg:flex-row gap-6">
+                <div className="flex-1">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    {columns.map(col => (
+                      <Column
+                        key={col.key}
+                        column={col.key}
+                        title={col.title}
+                        tasks={tasks}
+                        onAdd={addTask}
+                        onUpdate={updateTask}
+                        onDelete={deleteTask}
+                        onToggle={toggleCompleted}
+                        showCounter={col.showCounter}
+                        is24Hour={is24Hour}
+                        isIdea={col.isIdea}
+                        isSoon={col.isSoon}
+                        collapsed={collapsed[col.key]}
+                        onToggleCollapse={() => setCollapsed(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
+                      />
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="lg:w-80 flex-shrink-0 space-y-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <LargeNumericalClock is24Hour={is24Hour} />
+                    <SmallCircleClock tasksToday={todayTasks} is24Hour={is24Hour} />
+                  </div>
+                  <NextUpAndMissed tasksToday={todayTasks} is24Hour={is24Hour} />
+                </div>
               </div>
             </div>
+            <UndoToasts undoStack={undoStack} onUndo={undoDelete} />
+            {settingsOpen && <SettingsPanel isDark={isDark} toggleTheme={toggleTheme} is24Hour={is24Hour} toggleFormat={()=>setIs24Hour(v=>!v)} autoReset={autoResetToday} toggleAutoReset={()=>setAutoResetToday(v=>!v)} focusBgEnabled={focusBgEnabled} toggleFocusBg={()=>setFocusBgEnabled(v=>!v)} user={user} onLogout={logout} onClose={()=>setSettingsOpen(false)} />}
           </div>
-          <UndoToasts undoStack={undoStack} onUndo={undoDelete} />
-          {settingsOpen && <SettingsPanel isDark={isDark} toggleTheme={toggleTheme} is24Hour={is24Hour} toggleFormat={()=>setIs24Hour(v=>!v)} autoReset={autoResetToday} toggleAutoReset={()=>setAutoResetToday(v=>!v)} user={user} onLogout={logout} onClose={()=>setSettingsOpen(false)} />}
-        </div>
+        </>
       );
     }
 
