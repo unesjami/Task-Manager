@@ -13,6 +13,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <style>
+    /* (styles unchanged, same as original) */
     @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap');
@@ -217,6 +218,7 @@
       return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
     }
     function formatRange(start, end, use24Hour) {
+      if (!start || !end) return "";
       return `${formatTime(start, use24Hour)} – ${formatTime(end, use24Hour)}`;
     }
     function formatDateOnly(dateStr) {
@@ -581,8 +583,8 @@
       const [editing, setEditing] = useState(false);
       const [editTitle, setEditTitle] = useState(task.title);
       const [editDesc, setEditDesc] = useState(task.description || "");
-      const [editStart, setEditStart] = useState(task.startTime || "08:00");
-      const [editEnd, setEditEnd] = useState(task.endTime || "09:00");
+      const [editStart, setEditStart] = useState(task.startTime || "");
+      const [editEnd, setEditEnd] = useState(task.endTime || "");
       const [editDueDate, setEditDueDate] = useState(task.dueDate || "");
       const textareaRef = useRef(null);
       
@@ -591,7 +593,10 @@
       
       const save = () => {
         const updates = { title: editTitle, description: editDesc };
-        if (!isIdea && !isSoon) { updates.startTime = editStart || null; updates.endTime = editEnd || null; }
+        if (!isIdea && !isSoon) { 
+          updates.startTime = editStart || null; 
+          updates.endTime = editEnd || null; 
+        }
         if (isSoon) { updates.dueDate = editDueDate || null; }
         onUpdate(updates);
         setEditing(false);
@@ -659,8 +664,8 @@
       const [open, setOpen] = useState(false);
       const [title, setTitle] = useState("");
       const [desc, setDesc] = useState("");
-      const [startTime, setStartTime] = useState("08:00");
-      const [endTime, setEndTime] = useState("09:00");
+      const [startTime, setStartTime] = useState("");
+      const [endTime, setEndTime] = useState("");
       const [dueDate, setDueDate] = useState("");
       const textareaRef = useRef(null);
       
@@ -674,10 +679,13 @@
       const submit = () => {
         if (!title.trim()) return;
         const base = { title: title.trim(), description: desc.trim(), column, completed: false };
-        if (!isIdea && !isSoon) { base.startTime = startTime; base.endTime = endTime; }
-        if (isSoon) { base.dueDate = dueDate; }
+        if (!isIdea && !isSoon) { 
+          base.startTime = startTime || null; 
+          base.endTime = endTime || null; 
+        }
+        if (isSoon) { base.dueDate = dueDate || null; }
         onAdd(base);
-        setTitle(""); setDesc(""); setStartTime("08:00"); setEndTime("09:00"); setDueDate(""); setOpen(false);
+        setTitle(""); setDesc(""); setStartTime(""); setEndTime(""); setDueDate(""); setOpen(false);
       };
       const handleKey = (e, field) => {
         if (field === 'title' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
@@ -719,12 +727,33 @@
     }
 
     function Column({ column, title, tasks, onAdd, onUpdate, onDelete, onToggle, showCounter, is24Hour, isIdea = false, isSoon = false, collapsed, onToggleCollapse }) {
-      const columnTasks = tasks.filter(t => {
+      let columnTasks = tasks.filter(t => {
         if (column === 'newIdeas') {
           return t.column === 'newIdeas' || t.column === 'future';
         }
         return t.column === column;
-      }).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+      });
+      
+      // Apply sorting based on column type
+      if (column === 'today') {
+        // Sort by startTime (earliest first). Tasks without time go to bottom.
+        columnTasks.sort((a, b) => {
+          const aTime = a.startTime ? timeToMin(a.startTime) : Infinity;
+          const bTime = b.startTime ? timeToMin(b.startTime) : Infinity;
+          return aTime - bTime;
+        });
+      } else if (column === 'soon') {
+        // Sort by dueDate (earliest first). Tasks without date go to bottom.
+        columnTasks.sort((a, b) => {
+          const aDate = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+          const bDate = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+          return aDate - bDate;
+        });
+      } else {
+        // For newIdeas, sort by creation date (oldest first)
+        columnTasks.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+      }
+      
       const completedCount = columnTasks.filter(t => t.completed).length;
       const cardType = column === 'today' ? 'today' : (column === 'soon' ? 'soon' : 'ideas');
       return (
